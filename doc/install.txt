@@ -1,0 +1,38 @@
+How to install Hype
+================================
+
+Hyper is a project that aims to bring the wonderful indexer Hyper to the
+python world with a pythonic API.
+
+Dependencies
+--------------
+- PyRex >= 0.9.3 (only for regeneration of the C source file).
+- qdbm >= 1.8.33 (libqdbm11 or libqdbm2 in debian unstable)
+- hyperestraier >= 0.9.0 (hyperestraier adds new API in each revision though).
+- Python >= 2.3.
+- py.lib (py.test in particular, needed to run tests).
+
+If you have a binary based distribution you will also need the -dev version of
+libqdbm and hyperestraier.
+
+Hyperestraier is the successor of estraier (which is a different and older
+indexer that is now unmaintained), some distributions might decide to
+distribute hyperestraier library as libestraier-dev (like debian-unstable
+does). Keep this in mind when installing.
+
+Install
+--------
+After having installed the required bependencies run: 
+      	     
+	     $ python setup.py build
+	     
+	     $ sudo python setup.py install
+
+Hype has been tested under Ubuntu, Debian Unstable, Gentoo and OSX.
+
+Copyright
+----------
+Matt Goodall (mailto:matt@pollenation.net)
+Valentino Volonghi (mailto:dialtone@divmod.com)
+Pollenation Internet Ltd (http://www.pollenation.net)
+Merlinux.de (http://www.merlinux.de)

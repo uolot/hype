@@ -1,0 +1,5 @@
+Make standard document attribute name instance properties or __init__ args. @uri
+is required anyway. Without it, the document doesn't actually get inserted.
+
+Remove Condition from public API of package?
+

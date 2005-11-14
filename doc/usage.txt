@@ -1,0 +1,235 @@
+Hype usage guide
+=========================
+
+Hype is based on 3 fundamental objects:
+- Database
+- Document
+- Search
+
+Database
+--------
+
+The database object represents the storage backend for the documents stored in
+the indexer. The fundamental API is the following:
+
+class Database(path, omode)
+    - path represents the location in which to create a database and it's a
+      string.
+    - omode represents the mode in which the database should be opened.
+      Combined modes are available by using OR between them.
+      The Following modes are available:
+
+        - ESTDBREADER: Open the database in read-only mode.
+        - ESTDBWRITER: Open the database in read-write mode.
+        - ESTDBCREAT: Create the database if it doesn't exist.
+        - ESTDBTRUNC: Truncate while opening.
+        - ESTDBNOLCK: Open the database without locking.
+        - ESTDBLCKNB: Open the database without blocking.
+        - ESTDBPERFNG: Use perfect N-gram analyzer.
+
+    Database.name
+        - the name given to the database
+
+    Database.size
+        - size of the database
+
+    def close()
+        - close the database
+
+    def put_doc(doc)
+        - add a document to the database
+
+    def get_doc(id, options = 0)
+        - gather a document with the given id from the database
+        - options can be one or a combination of:
+            - ESTGDNOATTR: retrieve without attributes
+            - ESTGDNOTEXT: retrieve without text
+            - 0 means none of the above.
+
+    def get_doc_by_uri(uri)
+        - retrieve a document starting from the value of the @uri attribute
+
+    def flush(max = 0)
+        - flushes max words in the database, if max is 0 it means all.
+        - returns True if successful or raises DBFlushError.
+
+    def sync()
+        - sync the database with the on disk index.
+        - returns True if successful or raises DBSyncError
+ 
+    def optimize(options = 0)
+        - optimizes the database by cleaning up unused words and performing 
+          some reordering
+        - options can be one or a combination of:
+            - ESTOPTNOPURGE: avoid removing regions dedicated to already 
+              removed documents.
+            - ESTOPTNODBOPT: don't optimize database files.
+        - returns True if success or raises DBOptimizeError
+ 
+    def search(phrase=None, simple=None)
+        - main searching API, takes a string and a simple modifier to enter 
+          simple query mode.
+        - phrase is a text in the format explained in hyperestraier web page.
+        - simple activates the simplified query syntax which means that queries
+          like "a b c" are interpreted as "a AND b AND c".
+        - returns a Search object.
+
+    def commit(doc)
+        - updates a document already present in the database
+
+    def remove(doc, options = ESTODCLEAN)
+        - removes a document from the database
+        - options can be:
+            - ESTODCLEAN: cleanup dispensable regions of the deleted document
+            - 0 to disable this.
+
+        - returns True if successes or raises DBRemoveError
+
+len(Database)
+    - returns the number of documents in the database
+
+Document
+--------
+
+To be indexed a document requires the existence of the @uri attribute.
+
+class Document
+    Document.db
+        - The database in which the document is stored
+
+    Document.id
+        - The id of the document in the database
+
+    Document.attributes
+        - A list of attributes present in the document
+    
+    def get(name, default=None)
+        - Retrieve the value of 'name' attribute of the document, if the
+          attribute was not set return 'default'
+    
+    def add_text(text)
+        - Add text to the document.
+    
+    def add_hidden_text(text).
+        - Add hidden text to the document.
+
+    def commit()
+        - commit the modifications on the document in the database.
+        - returns True if successful, raises DBCommitError if some error
+          happens during commit or raises DocNeverAddedError if a commit() is
+          called on a document that is not present in the database.
+
+    def remove(options = ESTODCLEAN)
+        - remove the document from the database
+        - returns True if successful, raises DBRemoveError if some error
+          happpens during removal or raises DocNeverAddedError if a commit()
+          is called on a document that is not present in the database.
+        - options can be ESTODCLEAN or 0 if cleaning of dispensable regions of
+          the removed document is wanted.
+
+Document[ATTRIBUTE_NAME]
+    - retrieves the value of the attribute ATTRIBUTE_NAME
+
+Document[ATTRIBUTE_NAME] = VALUE
+    - sets the value of attribute ATTRIBUTE_NAME to VALUE
+
+doc_from_string(data)
+    - returns a document instance from a string document draft
+
+Search
+------
+
+Search is a lazy query evaluator. The query is not run until the result set is
+iterated through or len() is called on the Search object.
+
+class Search(database, phrase, simple)
+    - prepares the search on the 'database' object of the given 'phrase'.
+      If simple is not None, simple mode is activated.
+
+    def max(max)
+        - sets the maximum number of documents returned by the search
+
+    def add(expr)
+        - adds an attribute expression to restrict the search to those
+          documents that satisfy the expressions added
+
+    def order(expr)
+        - sets the ordering expression for the result set
+
+    def doc_at(pos)
+        - returns the document in the given position of the resultset
+
+len(Search) 
+    - returns the length of the resultset.
+
+Search[A:B:C]
+    - slices the resultset returning a SearchIterator object.
+
+Search[A]
+    - returns the document in the given position of the resultset.
+
+
+Examples
+========
+
+>>> import hype as he
+>>> PATH = 'examples.db'
+>>> db = he.Database(PATH)
+>>> doc = he.Document()
+>>> doc['@uri'] = 'first_one'  
+>>> doc.add_text('hi boy')
+>>> db.put_doc(doc)
+>>> doc = he.Document()
+>>> doc['@uri'] = 'second_one'
+>>> doc.add_text('hi dog')
+>>> db.put_doc(doc)
+>>> len(db)
+2
+>>> for element in db.search('hi'): 
+...     print element['@uri']
+... 
+first_one
+second_one
+>>> doc = db.get_doc_by_uri('second_one')
+>>> doc['@uri'] == 'second_one'
+True
+>>> doc.id == 2
+True
+>>> doc = db.get_doc(1)
+>>> doc.id == 1
+True
+>>> doc['@uri'] == 'first_one'
+True
+>>> searcher = db.search('hi')
+>>> len(searcher.max(1))
+1
+>>> for element in searcher:
+...     print element['@uri']
+... 
+first_one
+>>> searcher = db.search('hi').order('@uri STRD')
+>>> for element in searcher: 
+...     print element['@uri']
+... 
+second_one
+first_one
+>>> doc = he.Document()
+>>> doc['@uri'] = 'first_one' 
+>>> doc.add_text('how come you are reading here?')
+>>> db.put_doc(doc)
+>>> list(db.search('how you'))
+[]
+>>> len(db.search('how you', simple=True))
+1
+>>> len(db.search('how AND you'))
+1
+>>> db.close()
+>>> import shutil
+>>> shutil.rmtree(PATH)
+
+Copyright
+----------
+Matt Goodall (mailto:matt@pollenation.net)
+Valentino Volonghi (mailto:dialtone@divmod.com)
+Pollenation Internet Ltd (http://www.pollenation.net)
+Merlinux.de (http://www.merlinux.de)
