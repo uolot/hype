@@ -11,6 +11,7 @@ Dependencies
 - hyperestraier >= 0.9.0 (hyperestraier adds new API in each revision though).
 - Python >= 2.3.
 - py.lib (py.test in particular, needed to run tests).
+- dateutil package from Gustavo Niemeyer (http://labix.org/python-dateutil)
 
 If you have a binary based distribution you will also need the -dev version of
 libqdbm and hyperestraier.
