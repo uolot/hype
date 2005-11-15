@@ -29,6 +29,7 @@ def test_python_in_python_out():
     db = he.Database(str(py.test.ensuretemp('test.db12')))
     try:
         from datetime import datetime
+        dtt = he.dt_to_str
         t = datetime.now()
         doc = he.Document()
         doc['@uri'] = 'title 1'
@@ -38,8 +39,9 @@ def test_python_in_python_out():
         doc['@size'] = 1
         doc['@weight'] = 1
         db.put_doc(doc)
-        doc1 = list(db.search().add('@mdate NUMEQ %s' % (he.dt_to_str(t),)))[0]
-        dtt = he.dt_to_str
+        doc1 = list(db.search().add('@mdate NUMEQ %s' % (dtt(t, 0),)))[0]
+        doc2 = list(db.search().add('@mdate NUMEQ %s' % (dtt(t),)))[0]
+        assert doc1.id == doc2.id
         assert dtt(doc1['@mdate'], 0) == dtt(doc['@mdate'], 0) == dtt(t, 0)
         assert dtt(doc1['@cdate'], 0) == dtt(doc['@cdate'], 0) == dtt(t, 0)
         assert dtt(doc1['@adate'], 0) == dtt(doc['@adate'], 0) == dtt(t, 0)
