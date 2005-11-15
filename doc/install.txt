@@ -31,6 +31,15 @@ After having installed the required bependencies run:
 
 Hype has been tested under Ubuntu, Debian Unstable, Gentoo and OSX.
 
+In order to run the tests you'll need to build hype inplace with the
+following command:
+	  
+	    $ python setup.py build_ext -i
+
+And then you'll be able to run tests with:
+
+    	    $ py.test
+
 Copyright
 ----------
 Matt Goodall (mailto:matt@pollenation.net)
