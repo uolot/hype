@@ -25,6 +25,29 @@ def test_attr():
     py.test.raises(he.DocModifyImmutableError, doc.__setitem__, '@uri', 'bla')
     py.test.raises(KeyError, doc.__getitem__, 'missing')
 
+def test_python_in_python_out():
+    db = he.Database(str(py.test.ensuretemp('test.db12')))
+    try:
+        from datetime import datetime
+        t = datetime.now()
+        doc = he.Document()
+        doc['@uri'] = 'title 1'
+        doc['@mdate'] = t
+        doc['@cdate'] = t
+        doc['@adate'] = t
+        doc['@size'] = 1
+        doc['@weight'] = 1
+        db.put_doc(doc)
+        doc1 = list(db.search().add('@mdate NUMEQ %s' % (he.dt_to_str(t),)))[0]
+        dtt = he.dt_to_str
+        assert dtt(doc1['@mdate'], 0) == dtt(doc['@mdate'], 0) == dtt(t, 0)
+        assert dtt(doc1['@cdate'], 0) == dtt(doc['@cdate'], 0) == dtt(t, 0)
+        assert dtt(doc1['@adate'], 0) == dtt(doc['@adate'], 0) == dtt(t, 0)
+        assert doc1['@size'] == doc['@size'] == 1
+        assert doc1['@weight'] == doc['@weight'] == 1
+    finally:
+        db.close()
+
 def test_commit_remove():
     db = he.Database(str(py.test.ensuretemp('test.db1')))
     try:

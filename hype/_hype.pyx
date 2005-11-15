@@ -1,3 +1,5 @@
+from dateutil.parser import parse
+
 cdef extern from 'stdlib.h':
     void free(void *)
 
@@ -150,6 +152,27 @@ class DBOptimizeError(DBError):
 
 cdef class Database # Forward
 
+def dt_to_str(dt, iso=True):
+    if iso:
+        # "%Y-%m-%dT%H:%M:%SZ%z"
+        return dt.isoformat()
+    # RFC2822
+    return dt.strftime('%a, %d %b %Y %H:%M:%S %z').strip()
+
+def dt_from_str(date):
+    return parse(date)
+
+def _pass(obj):
+    return obj
+
+IN, OUT = range(2)
+_filters = {'@mdate': (dt_to_str, dt_from_str),
+            '@adate': (dt_to_str, dt_from_str),
+            '@cdate': (dt_to_str, dt_from_str),
+            '@size': (str, int),
+            '@weight': (str, float),
+            }
+
 cdef class Document:
     cdef ESTDOC *estdoc
     cdef Database db
@@ -203,6 +226,8 @@ cdef class Document:
         self.init_estdoc()
         if name == "@uri" and self.get('@uri', None):
             raise DocModifyImmutableError("Cannot modify @uri attribute")
+        if not isinstance(value, basestring):
+            value = _filters.get(name, (str, _pass))[IN](value)
         est_doc_add_attr(self.estdoc, name, value)
 
     def get(self, name, default=None):
@@ -211,7 +236,7 @@ cdef class Document:
         value = est_doc_attr(self.estdoc, name)
         if value == NULL:
             return default
-        return value
+        return _filters.get(name, (_pass, _pass))[OUT](value)
 
     def add_text(self, text):
         self.init_estdoc()
