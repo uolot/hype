@@ -39,6 +39,8 @@ def test_python_in_python_out():
         doc['@size'] = 1
         doc['@weight'] = 1
         db.put_doc(doc)
+        print dtt(t, False)
+        print dtt(t)
         doc1 = list(db.search().add('@mdate NUMEQ %s' % (dtt(t, 0),)))[0]
         doc2 = list(db.search().add('@mdate NUMEQ %s' % (dtt(t),)))[0]
         assert doc1.id == doc2.id

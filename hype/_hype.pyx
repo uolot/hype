@@ -1,3 +1,5 @@
+import time
+import rfc822
 from dateutil.parser import parse
 
 cdef extern from 'stdlib.h':
@@ -156,8 +158,15 @@ def dt_to_str(dt, iso=True):
     if iso:
         # "%Y-%m-%dT%H:%M:%SZ%z"
         return dt.isoformat()
-    # RFC2822
-    return dt.strftime('%a, %d %b %Y %H:%M:%S %z').strip()
+    # RFC2822 
+    # strftime uses the locale and translates the names which is bad.
+    # print dt.strftime('%a, %d %b %Y %H:%M:%S %z').strip()
+    return "%s, %02d %s %04d %02d:%02d:%02d" % (
+            ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][dt.isoweekday()],
+            dt.day,
+            ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+             "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][dt.month-1],
+             dt.year, dt.hour, dt.minute, dt.second)
 
 def dt_from_str(date):
     return parse(date)
