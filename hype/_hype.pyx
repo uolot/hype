@@ -20,42 +20,33 @@ cdef extern from 'cabin.h':
     char *cblistval(CBLIST *list, int index, int *sp)       # get value
     void cblistsort(CBLIST *list)                           # obvious
 
+ESTDBREADER = 1 << 0
+ESTDBWRITER = 1 << 1
+ESTDBCREAT = 1 << 2
+ESTDBTRUNC = 1 << 3
+ESTDBNOLCK = 1 << 4
+ESTDBLCKNB = 1 << 5
+ESTDBPERFNG = 1 << 6
+
+ESTCONDSURE = 1 << 0      # check every N-gram key
+ESTCONDUSUAL = 1 << 1     # check N-gram keys skipping by one
+ESTCONDFAST = 1 << 2      # check N-gram keys skipping by two
+ESTCONDAGITO = 1 << 3     # check N-gram keys skipping by three
+ESTCONDNOIDF = 1 << 4     # without TF-IDF tuning
+ESTCONDSIMPLE = 1 << 10   # with the simplified phrase
+ESTCONDSCFB = 1 << 30     # feed back scores (for debug)
+
+ESTPDCLEAN = 1 << 0
+
+ESTGDNOATTR = 1 << 0      # no attributes
+ESTGDNOTEXT = 1 << 1      # no text
+
+ESTOPTNOPURGE = 1 << 0    # omit purging dispensable region of deleted
+ESTOPTNODBOPT = 1 << 1    # omit optimization of the database files
+
+ESTODCLEAN = 1 << 0       # clean up dispensable regions
+
 cdef extern from 'estraier.h':
-
-    # Document open mode flags
-    cdef enum:
-        ESTDBREADER = 1 << 0
-        ESTDBWRITER = 1 << 1
-        ESTDBCREAT = 1 << 2
-        ESTDBTRUNC = 1 << 3
-        ESTDBNOLCK = 1 << 4
-        ESTDBLCKNB = 1 << 5
-        ESTDBPERFNG = 1 << 6
-
-    # Condition flags
-    cdef enum:
-        ESTCONDSURE = 1 << 0      # check every N-gram key
-        ESTCONDUSUAL = 1 << 1     # check N-gram keys skipping by one
-        ESTCONDFAST = 1 << 2      # check N-gram keys skipping by two
-        ESTCONDAGITO = 1 << 3     # check N-gram keys skipping by three
-        ESTCONDNOIDF = 1 << 4     # without TF-IDF tuning
-        ESTCONDSIMPLE = 1 << 10   # with the simplified phrase
-        ESTCONDSCFB = 1 << 30     # feed back scores (for debug)
-
-    # Document registration modes
-    cdef enum:
-        ESTPDCLEAN = 1 << 0
-
-    cdef enum:
-        ESTGDNOATTR = 1 << 0      # no attributes
-        ESTGDNOTEXT = 1 << 1      # no text
-
-    cdef enum:
-        ESTOPTNOPURGE = 1 << 0    # omit purging dispensable region of deleted
-        ESTOPTNODBOPT = 1 << 1    # omit optimization of the database files
-
-    cdef enum:                    # enumeration for options of document deletion
-        ESTODCLEAN = 1 << 0       # clean up dispensable regions
 
     ctypedef struct ESTDB:
         pass
