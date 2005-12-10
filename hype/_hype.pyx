@@ -5,10 +5,6 @@ from dateutil.parser import parse
 cdef extern from 'stdlib.h':
     void free(void *)
 
-cdef extern from "Python.h":
-    void  Py_INCREF(object o)
-    void  Py_DECREF(object o)
-
 cdef extern from 'cabin.h':
 
     # This is a qdbm header
@@ -175,11 +171,8 @@ _filters = {'@mdate': (dt_to_str, dt_from_str),
 
 cdef class Document:
     cdef ESTDOC *estdoc
-    cdef Database db
-
+    
     def __dealloc__(self):
-        if self.db is not None:
-            Py_DECREF(self.db)
         if self.estdoc != NULL:
             est_doc_delete(self.estdoc)
             self.estdoc = NULL
@@ -245,16 +238,6 @@ cdef class Document:
     def add_hidden_text(self, text):
         self.init_estdoc()
         est_doc_add_hidden_text(self.estdoc, text)
-
-    def commit(self):
-        if self.db is not None:
-            return self.db.commit(self)
-        raise DocNeverAddedError("Cannot commit an object that was never added")
-
-    def remove(self, int options = ESTODCLEAN):
-        if self.db is not None:
-            return self.db.remove(self, options)
-        raise DocNeverAddedError("Cannot remove an object that was never added")
 
 def doc_from_string(char *data):
     cdef ESTDOC *doc_p
@@ -334,8 +317,6 @@ cdef class Database:
     def put_doc(self, Document doc):
         self._check()
         est_db_put_doc(self.estdb, doc.estdoc, ESTPDCLEAN)
-        doc.db = self
-        Py_INCREF(self) # Incref
 
     def get_doc(self, int id, int options = 0):
         cdef ESTDOC *doc_p
@@ -345,8 +326,6 @@ cdef class Database:
         if doc_p != NULL:
             doc = Document()
             doc.estdoc = doc_p
-            doc.db = self
-            Py_INCREF(self) # Incref
             return doc
         return None
 

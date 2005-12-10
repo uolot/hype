@@ -56,18 +56,16 @@ def test_commit_remove():
     db = he.Database(str(py.test.ensuretemp('test.db1')))
     try:
         doc = he.Document()
-        py.test.raises(he.DocNeverAddedError, doc.remove)
-        py.test.raises(he.DocNeverAddedError, doc.commit)
         doc['@uri'] = 'test test'
         db.put_doc(doc)
         assert doc.id
         id = doc.id
         py.test.raises(KeyError, doc.__getitem__, '@title')
         doc['@title'] = 'title'
-        assert doc.commit()
+        assert db.commit(doc)
         assert db.get_doc(id)['@title'] == doc['@title']
         assert len(db) == 1
-        assert doc.remove()
+        assert db.remove(doc)
         assert len(db) == 0
     finally:
         db.close()
