@@ -24,12 +24,12 @@ else:
 
 ext = Extension('hype._hype',
                 ['hype/_hype.pyx'],
-                libraries=['estraier'],
-                library_dirs=['/usr/lib/', '/usr/local/lib', '/opt/local/lib'],
-                include_dirs=['/usr/include/', '/usr/local/include', '/opt/local/include',
+                libraries=['estraier', 'qdbm'],
+                library_dirs=['/usr/local/lib/', '/opt/local/lib/', '/usr/lib/'],
+                include_dirs=['/usr/local/include/', '/opt/local/include/', '/usr/include/',
                 # Debian non-standard locations
-                '/usr/include/qdbm',
-                '/usr/include/estraier'],
+                '/usr/include/qdbm/',
+                '/usr/include/estraier/'],
                 )
 
 setup(
