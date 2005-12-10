@@ -87,14 +87,13 @@ cdef extern from 'estraier.h':
     char *est_doc_attr(ESTDOC *doc, char *name)
     void est_doc_add_hidden_text(ESTDOC *doc, char *text)
     int est_doc_id(ESTDOC *doc)
+    void est_doc_set_id(ESTDOC *doc, int id)
     ESTDOC *est_doc_new_from_draft(char *draft)
     CBLIST *est_doc_attr_names(ESTDOC *doc)
+    CBLIST *est_doc_texts(ESTDOC *doc) # list of the texts added to the document
+    #char *est_doc_cat_texts(ESTDOC *doc) # this is implemented in python
 
     ## Document API that still needs wrapping before the end.
-    CBLIST *est_doc_texts(ESTDOC *doc) # list of the texts added to the document
-    char *est_doc_cat_texts(ESTDOC *doc) # this is the same as above but
-    # returns the list concatenated. this is hard to manage memory wise and we
-    # can build this on top of the other one above
     char *est_doc_dump_draft(ESTDOC *doc) # is this worth?
     # Creates the snippet with highlighted mathing *words in the *doc
     char *est_doc_make_snippet(ESTDOC *doc, CBLIST *words, int wwidth, int hwidth, int awidth)
@@ -189,6 +188,10 @@ cdef class Document:
         def __get__(self):
             self.init_estdoc()
             return est_doc_id(self.estdoc)
+        
+        def __set__(self, int id):
+            self.init_estdoc()
+            est_doc_set_id(self.estdoc, id)
 
     property uri:
         def __get__(self):

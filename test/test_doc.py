@@ -9,6 +9,11 @@ def test_docid():
         assert doc.id == -1
         db.put_doc(doc)
         assert doc.id != -1
+        doc = he.Document()
+        doc['@uri'] = 'uri2'
+        doc.id = 4
+        db.put_doc(doc)
+        assert db.get_doc(4)['@uri'] == 'uri2'
     finally:
         db.close()
 
@@ -39,10 +44,6 @@ def test_python_in_python_out():
         doc['@size'] = 1
         doc['@weight'] = 1
         db.put_doc(doc)
-        #print dtt(t, False)
-        #print dtt(t)
-        print [doc['@mdate'] for doc in list(db.search())]
-        print dtt(t, 0)
         doc1 = list(db.search().add('@mdate NUMEQ %s' % (dtt(t, 0),)))[0]
         doc2 = list(db.search().add('@mdate NUMEQ %s' % (dtt(t),)))[0]
         assert doc1.id == doc2.id
@@ -85,15 +86,29 @@ def test_text():
         db.close()
 
 def test_text_post():
-    py.test.skip("Anyone explain me why this fails while the one above doesn't")
+    py.test.skip("We need to implement a way to edit even the content of a document")
     db = he.Database(str(py.test.ensuretemp('test.db12345')))
     try:
         TEXT = 'yooooooo'
         doc = he.Document()
         doc['@uri'] = 'fooo'
+        o = doc.id
+        assert doc.id == -1
         db.put_doc(doc)
+        o1 = doc.id
+        assert doc.id != -1
         doc.add_text(TEXT)
+        o2 = doc.id
+        assert doc.id != -1
         db.commit(doc)
+        db.flush()
+        db.sync()
+        db.optimize()
+        o3 = doc.id
+        assert doc.id != -1
+        assert -1 == o != o1 == o2 == o3
+        assert doc.texts
+        assert doc.text
         assert db.get_doc(doc.id).texts == [TEXT]
     finally:
         db.close()

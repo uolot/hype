@@ -74,6 +74,16 @@ class Database(path, omode)
           like "a b c" are interpreted as "a AND b AND c".
         - returns a Search object.
 
+    def commit(doc)  
+        - updates attributes of a document already present in the database
+
+    def remove(doc, options = ESTODCLEAN)  
+        - removes a document from the database  
+        - options can be:  
+           - ESTODCLEAN: cleanup dispensable regions of the deleted document  
+           - 0 to disable this.
+        - returns True if successes or raises DBRemoveError
+
 len(Database)
     - returns the number of documents in the database
 
@@ -101,20 +111,6 @@ class Document
     
     def add_hidden_text(text).
         - Add hidden text to the document.
-
-    def commit()
-        - commit the modifications on the document in the database.
-        - returns True if successful, raises DBCommitError if some error
-          happens during commit or raises DocNeverAddedError if a commit() is
-          called on a document that is not present in the database.
-
-    def remove(options = ESTODCLEAN)
-        - remove the document from the database
-        - returns True if successful, raises DBRemoveError if some error
-          happpens during removal or raises DocNeverAddedError if a commit()
-          is called on a document that is not present in the database.
-        - options can be ESTODCLEAN or 0 if cleaning of dispensable regions of
-          the removed document is wanted.
 
 Document[ATTRIBUTE_NAME]
     - retrieves the value of the attribute ATTRIBUTE_NAME
