@@ -149,7 +149,7 @@ def dt_to_str(dt, iso=True):
     # strftime uses the locale and translates the names which is bad.
     # print dt.strftime('%a, %d %b %Y %H:%M:%S %z').strip()
     return "%s, %02d %s %04d %02d:%02d:%02d" % (
-            ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][dt.isoweekday()],
+            ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][dt.isoweekday()-1],
             dt.day,
             ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
              "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][dt.month-1],
@@ -208,6 +208,26 @@ cdef class Document:
                 attrs.append(cblistval(attrs_c, i, &sp))
             cblistclose(attrs_c)
             return attrs
+    
+    property texts:
+        " A list of texts in the document "
+        def __get__(self):
+            cdef CBLIST *_texts
+            cdef int texts_length, i, sp
+            self.init_estdoc()
+            _texts = est_doc_texts(self.estdoc)
+            texts_length = cblistnum(_texts)
+            texts = []
+            for i from 0 <= i < texts_length:
+                texts.append(cblistval(_texts, i, &sp))
+            # We don't need to close the list since its life is already
+            # synchronous with the life of the document
+            return texts
+
+    property text:
+        " A concatenated list of the texts in the document "
+        def __get__(self):
+            return '\n'.join(self.texts)
 
     def __getitem__(self, name):
         value = self.get(name)

@@ -39,8 +39,10 @@ def test_python_in_python_out():
         doc['@size'] = 1
         doc['@weight'] = 1
         db.put_doc(doc)
-        print dtt(t, False)
-        print dtt(t)
+        #print dtt(t, False)
+        #print dtt(t)
+        print [doc['@mdate'] for doc in list(db.search())]
+        print dtt(t, 0)
         doc1 = list(db.search().add('@mdate NUMEQ %s' % (dtt(t, 0),)))[0]
         doc2 = list(db.search().add('@mdate NUMEQ %s' % (dtt(t),)))[0]
         assert doc1.id == doc2.id
@@ -69,3 +71,30 @@ def test_commit_remove():
         assert len(db) == 0
     finally:
         db.close()
+
+def test_text():
+    db = he.Database(str(py.test.ensuretemp('test.db1234')))
+    try:
+        TEXT = 'yooooooo'
+        doc = he.Document()
+        doc['@uri'] = 'fooo'
+        doc.add_text(TEXT)
+        db.put_doc(doc)
+        assert db.get_doc(doc.id).texts == [TEXT]
+    finally:
+        db.close()
+
+def test_text_post():
+    py.test.skip("Anyone explain me why this fails while the one above doesn't")
+    db = he.Database(str(py.test.ensuretemp('test.db12345')))
+    try:
+        TEXT = 'yooooooo'
+        doc = he.Document()
+        doc['@uri'] = 'fooo'
+        db.put_doc(doc)
+        doc.add_text(TEXT)
+        db.commit(doc)
+        assert db.get_doc(doc.id).texts == [TEXT]
+    finally:
+        db.close()
+    
