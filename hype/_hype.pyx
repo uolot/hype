@@ -92,6 +92,7 @@ cdef extern from 'estraier.h':
     int est_db_out_keywords(ESTDB *db, int id)
     CBMAP *est_db_get_keywords(ESTDB *db, int id)
     int est_db_measure_doc(ESTDB *db, int id, int parts)
+    int est_db_iter_init(ESTDB *db, char *prev)
     int est_db_iter_next(ESTDB *db)
     int est_db_word_iter_init(ESTDB *db)
     char *est_db_word_iter_next(ESTDB *db)
