@@ -30,9 +30,21 @@ class Database(path, omode)
     Database.name
         - the name given to the database
 
+    Database.ecode
+        - returns a string of the error code for the database.
+    
+    Database.efatal
+        - returns True if the database has a fatal error.
+
     Database.size
         - size of the database
-
+    
+    Database.used_cache
+        - Amount of database cache used.
+        
+    Database.records_in_cache
+        - Number of elements in the cache
+    
     def close()
         - close the database
 
@@ -83,6 +95,15 @@ class Database(path, omode)
            - ESTODCLEAN: cleanup dispensable regions of the deleted document  
            - 0 to disable this.
         - returns True if successes or raises DBRemoveError
+    
+    def set_cache_size(self, size, anum, tnum, rnum)
+        - size: cache size. The default value is 64MB.
+        - anum: This is the maximum number of attribute records that can
+                be stored in the cache. The default is 8192.
+        - tnum: This is the maximum number of text records that can be stored
+                in the cache. The default is 1024.
+        - rnum: This is the maximum number of result records that can be stored
+                in the cache. The default is 256.
 
 len(Database)
     - returns the number of documents in the database
@@ -101,6 +122,15 @@ class Document
 
     Document.attributes
         - A list of attributes present in the document
+
+    Document.texts
+        - Returns a list of the document text fields
+
+    Document.text
+        - Returns a concatenated list of the document text fields
+
+    Document.hidden_text
+        - Returns a concatenated list of the document hidden text fields
     
     def get(name, default=None)
         - Retrieve the value of 'name' attribute of the document, if the
