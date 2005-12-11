@@ -138,17 +138,15 @@ cdef extern from 'estraier.h':
     void est_cond_set_order(ESTCOND *cond, char *expr)
     void est_cond_set_max(ESTCOND *cond, int max)
     void est_cond_set_options(ESTCOND *cond, int options)
-
-    # Cond-TODO
+    char *est_cond_order(ESTCOND *cond)
+    int est_cond_max(ESTCOND *cond)
+    char *est_cond_phrase(ESTCOND *cond)
+    int est_cond_options(ESTCOND *cond)
+    int est_cond_auxiliary(ESTCOND *cond)
     int est_cond_score(ESTCOND *cond, int index)
     void est_cond_set_auxiliary(ESTCOND *cond, int min)
     void est_cond_set_eclipse(ESTCOND *cond, double limit)
-    char *est_cond_phrase(ESTCOND *cond)
     CBLIST *est_cond_attrs(ESTCOND *cond)
-    char *est_cond_order(ESTCOND *cond)
-    int est_cond_max(ESTCOND *cond)
-    int est_cond_options(ESTCOND *cond)
-    int est_cond_auxiliary(ESTCOND *cond)
     int est_cond_auxiliary_word(ESTCOND *cond, char *word)
     int *est_cond_shadows(ESTCOND *cond, int id, int *np)
 
@@ -325,6 +323,68 @@ cdef class Condition:
 
     def __new__(self):
         self.estcond = est_cond_new()
+
+    property max:
+        def __get__(self):
+            return est_cond_max(self.estcond)
+        def __set__(self, max):
+            self.set_max(max)
+    
+    property phrase:
+        def __get__(self):
+            return est_cond_phrase(self.estcond)
+        def __set__(self, phrase):
+            self.set_phrase(phrase)
+    
+    property order:
+        def __get__(self):
+            return est_cond_order(self.estcond)
+        def __set__(self, order):
+            self.set_order(phrase)
+    
+    property options:
+        def __get__(self):
+            return est_cond_options(self.estcond)
+        def __set__(self, int options):
+            self.set_options(options)
+    
+    property aux:
+        def __get__(self):
+            return est_cond_auxiliary(self.estcond)
+        def __set__(self, min):
+            est_cond_set_auxiliary(self.estcond, min)
+    
+    property eclipse:
+        def __set__(self, double limit):
+            est_cond_set_eclipse(self.estcond, limit)
+
+    property attrs:
+        def __get__(self):
+            cdef CBLIST *_attrs
+            cdef int _attrs_length, i, sp
+            _attrs = est_cond_attrs(self.estcond)
+            _attrs_length = cblistnum(_attrs)
+            attrs = []
+            for i from 0 <= i < _attrs_length:
+                texts.append(cblistval(_attrs, i, &sp))
+            # We don't need to close the list since its life is already
+            # synchronous with the life of the condition
+            return attrs
+
+    def get_score(self, index):
+        return est_cond_score(self.estcond, index)
+
+    def aux_used(self, word):
+        return bool(est_cond_auxiliary_word(self.estcond, word))
+    
+    def shadows(self, int parent):
+        cdef int* _res
+        cdef int np, i
+        res = []
+        _res = est_cond_shadows(self.estcond, parent, &np)
+        for i from 0 <= i < (np/2):
+            res.append((_res[i], _res[i+1]))
+        return res
 
     def set_phrase(self, phrase):
         est_cond_set_phrase(self.estcond, phrase)
