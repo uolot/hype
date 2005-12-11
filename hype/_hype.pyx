@@ -143,12 +143,12 @@ cdef extern from 'estraier.h':
     int est_cond_max(ESTCOND *cond)
     char *est_cond_phrase(ESTCOND *cond)
     int est_cond_options(ESTCOND *cond)
-    int est_cond_auxiliary(ESTCOND *cond)
+    # int est_cond_auxiliary(ESTCOND *cond) Breaks Win32 as of 1.1.1
     int est_cond_score(ESTCOND *cond, int index)
-    void est_cond_set_auxiliary(ESTCOND *cond, int min)
+    # void est_cond_set_auxiliary(ESTCOND *cond, int min) Breaks Win32 as of 1.1.1
     void est_cond_set_eclipse(ESTCOND *cond, double limit)
     CBLIST *est_cond_attrs(ESTCOND *cond)
-    int est_cond_auxiliary_word(ESTCOND *cond, char *word)
+    # int est_cond_auxiliary_word(ESTCOND *cond, char *word) Breaks Win32 as of 1.1.1
     int *est_cond_shadows(ESTCOND *cond, int id, int *np)
 
 class HyperEstraierError(Exception):
@@ -349,11 +349,11 @@ cdef class Condition:
         def __set__(self, int options):
             self.set_options(options)
     
-    property aux:
-        def __get__(self):
-            return est_cond_auxiliary(self.estcond)
-        def __set__(self, min):
-            est_cond_set_auxiliary(self.estcond, min)
+    #property aux:
+    #    def __get__(self):
+    #        return est_cond_auxiliary(self.estcond)
+    #    def __set__(self, min):
+    #        est_cond_set_auxiliary(self.estcond, min)
     
     property eclipse:
         def __set__(self, double limit):
@@ -375,8 +375,8 @@ cdef class Condition:
     def get_score(self, index):
         return est_cond_score(self.estcond, index)
 
-    def aux_used(self, word):
-        return bool(est_cond_auxiliary_word(self.estcond, word))
+    #def aux_used(self, word):
+    #    return bool(est_cond_auxiliary_word(self.estcond, word))
     
     def shadows(self, int parent):
         cdef int* _res
