@@ -78,6 +78,10 @@ cdef extern from 'estraier.h':
     int est_db_edit_doc(ESTDB *db, ESTDOC *doc)
     int est_db_error(ESTDB *db)
     int est_db_fatal(ESTDB *db)
+    int est_db_cache_num(ESTDB *db)
+    int est_db_used_cache_size(ESTDB *db)
+    void est_db_set_special_cache(ESTDB *db, char *name, int num)
+    void est_db_set_cache_size(ESTDB *db, int size, int anum, int tnum, int rnum)
 
     # Document API
     ESTDOC *est_doc_new()
@@ -236,6 +240,7 @@ cdef class Document:
     property hidden_text:
         " A concatenated string of hidden text "
         def __get__(self):
+            # See above, we don't need to worry about lifetime here too
             return est_doc_hidden_texts(self.estdoc)
 
     def __getitem__(self, name):
@@ -317,7 +322,7 @@ cdef class Database:
         Check that the connection has not been close already.
         """
         if self.estdb == NULL:
-            raise HyperEstraierException('Database is closed.')
+            raise HyperEstraierError('Database is closed.')
 
     property name:
         def __get__(self):
@@ -338,6 +343,16 @@ cdef class Database:
         def __get__(self):
             self._check()
             return bool(est_db_fatal(self.estdb))
+
+    property used_cache:
+        def __get__(self):
+            self._check()
+            return est_db_used_cache_size(self.estdb)
+    
+    property records_in_cache:
+        def __get__(self):
+            self._check()
+            return est_db_cache_num(self.estdb)
 
     def __len__(self):
         self._check()
@@ -397,6 +412,12 @@ cdef class Database:
         if est_db_out_doc(self.estdb, doc.id, options):
             return True
         raise DBRemoveError("Error while removing an object")
+
+    def set_cache_size(self, unsigned long size, anum, tnum, rnum):
+        est_db_set_cache_size(self.estdb, size, anum, tnum, rnum)
+
+    def set_special_cache_size(self, name, num):
+        est_db_set_special_cache(self.estdb, name, num)
 
 cdef class Search:
     """

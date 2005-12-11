@@ -64,6 +64,12 @@ def test_len():
 def test_size():
     assert db.size > 0
 
+def test_cache():
+    assert db.used_cache
+    assert db.records_in_cache
+    db.set_cache_size(2**16, 60, 60, 60)
+    db.set_special_cache_size('@uri', 60)
+
 def test_crash_and_burn():
     db.close()
     py.test.raises(Exception, db.search)
