@@ -80,8 +80,13 @@ def test_text():
         doc = he.Document()
         doc['@uri'] = 'fooo'
         doc.add_text(TEXT)
+        doc.add_text(TEXT)
+        doc.add_hidden_text(TEXT)
+        doc.add_hidden_text(TEXT)
         db.put_doc(doc)
-        assert db.get_doc(doc.id).texts == [TEXT]
+        assert db.get_doc(doc.id).texts == [TEXT, TEXT]
+        assert db.get_doc(doc.id).text == TEXT+' '+TEXT
+        assert db.get_doc(doc.id).hidden_text == TEXT+' '+TEXT
     finally:
         db.close()
 

@@ -92,6 +92,7 @@ cdef extern from 'estraier.h':
     CBLIST *est_doc_attr_names(ESTDOC *doc)
     CBLIST *est_doc_texts(ESTDOC *doc) # list of the texts added to the document
     #char *est_doc_cat_texts(ESTDOC *doc) # this is implemented in python
+    char *est_doc_hidden_texts(ESTDOC *doc)
 
     ## Document API that still needs wrapping before the end.
     char *est_doc_dump_draft(ESTDOC *doc) # is this worth?
@@ -230,7 +231,12 @@ cdef class Document:
     property text:
         " A concatenated list of the texts in the document "
         def __get__(self):
-            return '\n'.join(self.texts)
+            return ' '.join(self.texts)
+            
+    property hidden_text:
+        " A concatenated string of hidden text "
+        def __get__(self):
+            return est_doc_hidden_texts(self.estdoc)
 
     def __getitem__(self, name):
         value = self.get(name)
