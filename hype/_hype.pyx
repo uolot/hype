@@ -5,17 +5,6 @@ from dateutil.parser import parse
 cdef extern from 'stdlib.h':
     void free(void *)
 
-cdef extern from 'cabin.h':
-
-    # This is a qdbm header
-    ctypedef struct CBLIST:
-        pass
-
-    void cblistclose(CBLIST *list)                          # close cblist
-    int cblistnum(CBLIST *list)                             # length of cblist
-    char *cblistval(CBLIST *list, int index, int *sp)       # get value
-    void cblistsort(CBLIST *list)                           # obvious
-
 ESTDBREADER = 1 << 0
 ESTDBWRITER = 1 << 1
 ESTDBCREAT = 1 << 2
@@ -56,6 +45,14 @@ cdef extern from 'estraier.h':
     ctypedef struct CBMAP:
         pass
 
+    ctypedef struct CBLIST:
+        pass
+
+    void cblistclose(CBLIST *list)                          # close cblist
+    int cblistnum(CBLIST *list)                             # length of cblist
+    char *cblistval(CBLIST *list, int index, int *sp)       # get value
+    void cblistsort(CBLIST *list)                           # obvious
+
     char *est_err_msg(int ecode)
 
     # Database API
@@ -71,17 +68,44 @@ cdef extern from 'estraier.h':
     int est_db_sync(ESTDB *db)
     int est_db_optimize(ESTDB *db, int options)
     int est_db_uri_to_id(ESTDB *db, char *uri)
-    # These are part of the Database API but they really should stay in the
-    # Document like: Document.remove() and the other one used under the
-    # hood when changing a document.
     int est_db_out_doc(ESTDB *db, int id, int options)
     int est_db_edit_doc(ESTDB *db, ESTDOC *doc)
     int est_db_error(ESTDB *db)
     int est_db_fatal(ESTDB *db)
+    
+    # Advanced DB API
     int est_db_cache_num(ESTDB *db)
     int est_db_used_cache_size(ESTDB *db)
     void est_db_set_special_cache(ESTDB *db, char *name, int num)
     void est_db_set_cache_size(ESTDB *db, int size, int anum, int tnum, int rnum)
+
+    # Db-TODO
+    int est_db_scan_doc(ESTDB *db, ESTDOC *doc, ESTCOND *cond)
+    int est_db_inode(ESTDB *db)
+    int est_db_set_doc_entity(ESTDB *db, int id, char *ptr, int size)
+    char *est_db_get_doc_entity(ESTDB *db, int id, int *sp)
+    void est_db_add_meta(ESTDB *db, char *name, char *value)
+    CBLIST *est_db_meta_names(ESTDB *db)
+    char *est_db_meta(ESTDB *db, char *name)
+    CBMAP *est_db_etch_doc(ESTDB *db, ESTDOC *doc, int max)
+    int est_db_put_keywords(ESTDB *db, int id, CBMAP *kwords)
+    int est_db_out_keywords(ESTDB *db, int id)
+    CBMAP *est_db_get_keywords(ESTDB *db, int id)
+    int est_db_measure_doc(ESTDB *db, int id, int parts)
+    int est_db_iter_next(ESTDB *db)
+    int est_db_word_iter_init(ESTDB *db)
+    char *est_db_word_iter_next(ESTDB *db)
+    int est_db_word_rec_size(ESTDB *db, char *word)
+    int est_db_keyword_num(ESTDB *db)
+    int est_db_keyword_iter_init(ESTDB *db)
+    char *est_db_keyword_iter_next(ESTDB *db)
+    int est_db_keyword_rec_size(ESTDB *db, char *word)
+    int *est_db_keyword_search(ESTDB *db, char *word, int *nump)
+    void est_db_fill_key_cache(ESTDB *db)
+    void est_db_refresh_rescc(ESTDB *db)
+    void est_db_charge_rescc(ESTDB *db, int max)
+    CBLIST *est_db_list_rescc(ESTDB *db)
+    void est_db_interrupt(ESTDB *db)
 
     # Document API
     ESTDOC *est_doc_new()
@@ -102,6 +126,9 @@ cdef extern from 'estraier.h':
     char *est_doc_dump_draft(ESTDOC *doc) # is this worth?
     # Creates the snippet with highlighted mathing *words in the *doc
     char *est_doc_make_snippet(ESTDOC *doc, CBLIST *words, int wwidth, int hwidth, int awidth)
+    void est_doc_set_keywords(ESTDOC *doc, CBMAP *kwords)
+    CBMAP *est_doc_keywords(ESTDOC *doc)
+    int est_doc_is_empty(ESTDOC *doc)
 
     # Condition API
     ESTCOND *est_cond_new()
@@ -111,7 +138,19 @@ cdef extern from 'estraier.h':
     void est_cond_set_order(ESTCOND *cond, char *expr)
     void est_cond_set_max(ESTCOND *cond, int max)
     void est_cond_set_options(ESTCOND *cond, int options)
+
+    # Cond-TODO
     int est_cond_score(ESTCOND *cond, int index)
+    void est_cond_set_auxiliary(ESTCOND *cond, int min)
+    void est_cond_set_eclipse(ESTCOND *cond, double limit)
+    char *est_cond_phrase(ESTCOND *cond)
+    CBLIST *est_cond_attrs(ESTCOND *cond)
+    char *est_cond_order(ESTCOND *cond)
+    int est_cond_max(ESTCOND *cond)
+    int est_cond_options(ESTCOND *cond)
+    int est_cond_auxiliary(ESTCOND *cond)
+    int est_cond_auxiliary_word(ESTCOND *cond, char *word)
+    int *est_cond_shadows(ESTCOND *cond, int id, int *np)
 
 class HyperEstraierError(Exception):
     pass
