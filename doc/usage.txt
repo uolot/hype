@@ -191,52 +191,52 @@ Examples
 >>> PATH = 'examples.db'
 >>> db = he.Database(PATH)
 >>> doc = he.Document()
->>> doc['@uri'] = 'first_one'  
->>> doc.add_text('hi boy')
+>>> doc['@uri'] = u'first_one'  
+>>> doc.add_text(u'hi boy')
 >>> db.put_doc(doc)
 >>> doc = he.Document()
->>> doc['@uri'] = 'second_one'
->>> doc.add_text('hi dog')
+>>> doc['@uri'] = u'second_one'
+>>> doc.add_text(u'hi dog')
 >>> db.put_doc(doc)
 >>> len(db)
 2
->>> for element in db.search('hi'): 
+>>> for element in db.search(u'hi'): 
 ...     print element['@uri']
 ... 
 first_one
 second_one
->>> doc = db.get_doc_by_uri('second_one')
->>> doc['@uri'] == 'second_one'
+>>> doc = db.get_doc_by_uri(u'second_one')
+>>> doc['@uri'] == u'second_one'
 True
 >>> doc.id == 2
 True
 >>> doc = db.get_doc(1)
 >>> doc.id == 1
 True
->>> doc['@uri'] == 'first_one'
+>>> doc['@uri'] == u'first_one'
 True
->>> searcher = db.search('hi')
+>>> searcher = db.search(u'hi')
 >>> len(searcher.max(1))
 1
 >>> for element in searcher:
 ...     print element['@uri']
 ... 
 first_one
->>> searcher = db.search('hi').order('@uri STRD')
+>>> searcher = db.search(u'hi').order(u'@uri STRD')
 >>> for element in searcher: 
 ...     print element['@uri']
 ... 
 second_one
 first_one
 >>> doc = he.Document()
->>> doc['@uri'] = 'first_one' 
->>> doc.add_text('how come you are reading here?')
+>>> doc['@uri'] = u'first_one' 
+>>> doc.add_text(u'how come you are reading here?')
 >>> db.put_doc(doc)
->>> list(db.search('how you'))
+>>> list(db.search(u'how you'))
 []
->>> len(db.search('how you', simple=True))
+>>> len(db.search(u'how you', simple=True))
 1
->>> len(db.search('how AND you'))
+>>> len(db.search(u'how AND you'))
 1
 >>> db.close()
 >>> import shutil

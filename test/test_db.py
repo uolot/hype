@@ -5,7 +5,7 @@ NAME = str(py.test.ensuretemp('test_db.db'))
 
 def setup_module(mod):
     mod.db = he.Database(NAME)
-    for title, content in [('1', 'one one'), ('2', 'two two'), ('3', 'three three')]:
+    for title, content in [(u'1', u'one one'), (u'2', u'two two'), (u'3', u'three three')]:
         doc = he.Document()
         doc['@uri'] = title
         doc['@title'] = title
@@ -20,11 +20,11 @@ def test_commit_remove():
         doc = he.Document()
         py.test.raises(he.DBRemoveError, db.remove, doc)
         py.test.raises(he.DBEditError, db.commit, doc)
-        doc['@uri'] = 'test'
+        doc['@uri'] = u'test'
         db.put_doc(doc)
         assert len(db) == 1
         assert db.commit(doc)
-        doc['@title'] = 'commit test'
+        doc['@title'] = u'commit test'
         assert db.commit(doc)
         id = doc.id
         d = db.get_doc(doc.id)
@@ -32,14 +32,14 @@ def test_commit_remove():
         assert d['@title'] == doc['@title']
         assert len(db) == 1
 
-        d_copy = db.get_doc_by_uri('test')
+        d_copy = db.get_doc_by_uri(u'test')
         assert d_copy['@title'] == d['@title'] == doc['@title']
 
-        d_copy2 = db.get_doc_by_uri('commit test')
+        d_copy2 = db.get_doc_by_uri(u'commit test')
         assert not d_copy2 # commit test is @title not @uri
 
         doc2 = he.Document()
-        doc2['@uri'] = 'another test'
+        doc2['@uri'] = u'another test'
         db.put_doc(doc2)
         id2 = doc2.id
 

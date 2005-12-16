@@ -18,70 +18,70 @@ def setup_module(mod):
         if path.basename.startswith('rfc'):
             doc = he.Document()
             stat = path.lstat()
-            doc['@uri'] = path.basename
-            doc['@cdate'] = formattime(stat.ctime)
-            doc['@mdate'] = formattime(stat.mtime)
-            doc['@size'] = str(stat.size)
-            doc['@title'] = path.basename
-            doc.add_text(path.read())
+            doc['@uri'] = unicode(path.basename)
+            doc['@cdate'] = unicode(formattime(stat.ctime))
+            doc['@mdate'] = unicode(formattime(stat.mtime))
+            doc['@size'] = unicode(stat.size)
+            doc['@title'] = unicode(path.basename)
+            doc.add_text(unicode(path.read(), 'utf-8'))
             mod.db.put_doc(doc)
     db.flush()
     db.sync()
     db.optimize()
 
 def test_phrase():
-    result = db.search('access control')
+    result = db.search(u'access control')
     assert len(result) == 6
-    assert uris(result) == ['rfc1503.txt', 'rfc1507.txt', 'rfc1508.txt', 'rfc1505.txt', 'rfc1510.txt', 'rfc1538.txt']
+    assert uris(result) == [u'rfc1503.txt', u'rfc1507.txt', u'rfc1508.txt', u'rfc1505.txt', u'rfc1510.txt', u'rfc1538.txt']
 
 def test_index():
-    result = db.search('access control')
-    assert result[0]['@uri'] == 'rfc1503.txt'
+    result = db.search(u'access control')
+    assert result[0]['@uri'] == u'rfc1503.txt'
     py.test.raises(IndexError, result.__getitem__, 100)
 
 def test_slice():
-    result = db.search('access control')
+    result = db.search(u'access control')
     # Check a simple slice
-    assert uris(result[:2]) == ['rfc1503.txt', 'rfc1507.txt']
+    assert uris(result[:2]) == [u'rfc1503.txt', u'rfc1507.txt']
     # Check a new slice gives the same result
-    assert uris(result[:2]) == ['rfc1503.txt', 'rfc1507.txt']
-    assert uris(result[1:2]) == ['rfc1507.txt']
+    assert uris(result[:2]) == [u'rfc1503.txt', u'rfc1507.txt']
+    assert uris(result[1:2]) == [u'rfc1507.txt']
     assert uris(result[0:0]) == []
     assert uris(result[100:]) == []
     assert uris(result[100:100]) == []
-    assert uris(result[:]) == ['rfc1503.txt', 'rfc1507.txt', 'rfc1508.txt', 'rfc1505.txt', 'rfc1510.txt', 'rfc1538.txt']
-    assert uris(result[:-2]) == ['rfc1503.txt', 'rfc1507.txt', 'rfc1508.txt', 'rfc1505.txt']
-    assert uris(result[::-1]) == ['rfc1538.txt', 'rfc1510.txt',  'rfc1505.txt',  'rfc1508.txt',  'rfc1507.txt',  'rfc1503.txt']
-    assert uris(result[::-1]) == ['rfc1538.txt', 'rfc1510.txt',  'rfc1505.txt',  'rfc1508.txt',  'rfc1507.txt',  'rfc1503.txt']
+    assert uris(result[:]) == [u'rfc1503.txt', u'rfc1507.txt', u'rfc1508.txt', u'rfc1505.txt', u'rfc1510.txt', u'rfc1538.txt']
+    assert uris(result[:-2]) == [u'rfc1503.txt', u'rfc1507.txt', u'rfc1508.txt', u'rfc1505.txt']
+    assert uris(result[::-1]) == [u'rfc1538.txt', u'rfc1510.txt',  u'rfc1505.txt',  u'rfc1508.txt',  u'rfc1507.txt',  u'rfc1503.txt']
+    assert uris(result[::-1]) == [u'rfc1538.txt', u'rfc1510.txt',  u'rfc1505.txt',  u'rfc1508.txt',  u'rfc1507.txt',  u'rfc1503.txt']
 
 def test_badslice():
-    result = db.search('access control')
+    result = db.search(u'access control')
     assert uris(result[:-20]) == []
     assert uris(result[20:0]) == []
     assert uris(result[0:20:-1]) == []
     assert uris(result[20:0:1]) == []
 
 def test_expr():
-    result =  db.search('access control').add('@title STREQ rfc1503.txt')
+    result =  db.search(u'access control').add(u'@title STREQ rfc1503.txt')
     assert len(result) == 1
-    assert uris(result) == ['rfc1503.txt']
+    assert uris(result) == [u'rfc1503.txt']
 
 def test_expr2():
-    result = db.search().add('@title STRBW rfc152')
+    result = db.search().add(u'@title STRBW rfc152')
     assert len(result) == 10
     # The order appears to be unstable, presumably because there is no search
     # phrase to score against, so compare sets
-    assert set(uris(result)) == set(['rfc1520.txt', 'rfc1521.txt', 'rfc1522.txt', 'rfc1523.txt', 'rfc1524.txt', 'rfc1525.txt', 'rfc1526.txt', 'rfc1527.txt', 'rfc1528.txt', 'rfc1529.txt'])
+    assert set(uris(result)) == set([u'rfc1520.txt', u'rfc1521.txt', u'rfc1522.txt', u'rfc1523.txt', u'rfc1524.txt', u'rfc1525.txt', u'rfc1526.txt', u'rfc1527.txt', u'rfc1528.txt', u'rfc1529.txt'])
 
 def test_max():
-    result =  db.search('access control').max(2)
+    result =  db.search(u'access control').max(2)
     assert len(result) == 2
-    assert uris(result) == ['rfc1503.txt', 'rfc1507.txt']
+    assert uris(result) == [u'rfc1503.txt', u'rfc1507.txt']
 
 def test_order():
-    result =  db.search('access control').order('@title STRA')
+    result =  db.search(u'access control').order(u'@title STRA')
     assert len(result) == 6
-    assert uris(result) == ['rfc1503.txt', 'rfc1505.txt', 'rfc1507.txt', 'rfc1508.txt', 'rfc1510.txt', 'rfc1538.txt']
+    assert uris(result) == [u'rfc1503.txt', u'rfc1505.txt', u'rfc1507.txt', u'rfc1508.txt', u'rfc1510.txt', u'rfc1538.txt']
 
 def teardown_module(mod):
     mod.db.close()

@@ -5,6 +5,9 @@ from dateutil.parser import parse
 cdef extern from 'stdlib.h':
     void free(void *)
 
+cdef extern from 'string.h':
+    int strlen(char *s)
+
 ESTDBREADER = 1 << 0
 ESTDBWRITER = 1 << 1
 ESTDBCREAT = 1 << 2
@@ -160,10 +163,10 @@ class DBError(HyperEstraierError):
 class DocumentError(HyperEstraierError):
     pass
 
-class DocModifyImmutableError(DocumentError):
+class DocumentUnicodeError(DocumentError):
     pass
 
-class DocNeverAddedError(DocumentError):
+class DocModifyImmutableError(DocumentError):
     pass
 
 class DBEditError(DBError):
@@ -186,16 +189,17 @@ cdef class Database # Forward
 def dt_to_str(dt, iso=True):
     if iso:
         # "%Y-%m-%dT%H:%M:%SZ%z"
-        return dt.isoformat()
+        return unicode(dt.isoformat())
     # RFC2822 
     # strftime uses the locale and translates the names which is bad.
     # print dt.strftime('%a, %d %b %Y %H:%M:%S %z').strip()
-    return "%s, %02d %s %04d %02d:%02d:%02d" % (
+    res = "%s, %02d %s %04d %02d:%02d:%02d" % (
             ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][dt.isoweekday()-1],
             dt.day,
             ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
              "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][dt.month-1],
              dt.year, dt.hour, dt.minute, dt.second)
+    return unicode(res)
 
 def dt_from_str(date):
     return parse(date)
@@ -207,9 +211,19 @@ IN, OUT = range(2)
 _filters = {'@mdate': (dt_to_str, dt_from_str),
             '@adate': (dt_to_str, dt_from_str),
             '@cdate': (dt_to_str, dt_from_str),
-            '@size': (str, int),
-            '@weight': (str, float),
+            '@size': (unicode, int),
+            '@weight': (unicode, float),
             }
+
+def encode(unicode_string):
+    if not isinstance(unicode_string, unicode):
+        raise DocumentUnicodeError("Hype only accepts unicode text as input")
+    return unicode_string.encode('utf-8')
+
+def decode(encoded_string):
+    # Since we only insert utf-8 encoded strings we can safely assume we 
+    # will only ever decode utf-8 encoded strings
+    return encoded_string.decode('utf-8')
 
 cdef class Document:
     cdef ESTDOC *estdoc
@@ -265,7 +279,8 @@ cdef class Document:
             texts_length = cblistnum(_texts)
             texts = []
             for i from 0 <= i < texts_length:
-                texts.append(cblistval(_texts, i, &sp))
+                decoded = decode(cblistval(_texts, i, &sp))
+                texts.append(decoded)
             # We don't need to close the list since its life is already
             # synchronous with the life of the document
             return texts
@@ -273,13 +288,14 @@ cdef class Document:
     property text:
         " A concatenated list of the texts in the document "
         def __get__(self):
-            return ' '.join(self.texts)
+            return unicode(' ').join(self.texts)
             
     property hidden_text:
         " A concatenated string of hidden text "
         def __get__(self):
             # See above, we don't need to worry about lifetime here too
-            return est_doc_hidden_texts(self.estdoc)
+            decoded = decode(est_doc_hidden_texts(self.estdoc))
+            return decoded
 
     def __getitem__(self, name):
         value = self.get(name)
@@ -292,8 +308,9 @@ cdef class Document:
         if name == "@uri" and self.get('@uri', None):
             raise DocModifyImmutableError("Cannot modify @uri attribute")
         if not isinstance(value, basestring):
-            value = _filters.get(name, (str, _pass))[IN](value)
-        est_doc_add_attr(self.estdoc, name, value)
+            value = _filters.get(name, (unicode, _pass))[IN](value)
+        encoded = encode(value)
+        est_doc_add_attr(self.estdoc, name, encoded)
 
     def get(self, name, default=None):
         cdef char *value
@@ -301,20 +318,24 @@ cdef class Document:
         value = est_doc_attr(self.estdoc, name)
         if value == NULL:
             return default
-        return _filters.get(name, (_pass, _pass))[OUT](value)
+        decoded = decode(value)
+        return _filters.get(name, (_pass, _pass))[OUT](decoded)
 
     def add_text(self, text):
         self.init_estdoc()
-        est_doc_add_text(self.estdoc, text)
+        encoded = encode(text)
+        est_doc_add_text(self.estdoc, encoded)
 
     def add_hidden_text(self, text):
         self.init_estdoc()
-        est_doc_add_hidden_text(self.estdoc, text)
+        encoded = encode(text)
+        est_doc_add_hidden_text(self.estdoc, encoded)
 
 def doc_from_string(char *data):
     cdef ESTDOC *doc_p
     cdef Document doc
-    doc_p = est_doc_new_from_draft(data)
+    encoded = encode(data)
+    doc_p = est_doc_new_from_draft(encoded)
     doc = Document()
     doc.estdoc = doc_p
     return doc
@@ -341,7 +362,7 @@ cdef class Condition:
         def __get__(self):
             return est_cond_order(self.estcond)
         def __set__(self, order):
-            self.set_order(phrase)
+            self.set_order(order)
     
     property options:
         def __get__(self):
@@ -367,7 +388,8 @@ cdef class Condition:
             _attrs_length = cblistnum(_attrs)
             attrs = []
             for i from 0 <= i < _attrs_length:
-                texts.append(cblistval(_attrs, i, &sp))
+                decoded = decode(cblistval(_attrs, i, &sp))
+                texts.append(decoded)
             # We don't need to close the list since its life is already
             # synchronous with the life of the condition
             return attrs
@@ -388,13 +410,16 @@ cdef class Condition:
         return res
 
     def set_phrase(self, phrase):
-        est_cond_set_phrase(self.estcond, phrase)
+        encoded = encode(phrase)
+        est_cond_set_phrase(self.estcond, encoded)
 
     def add_attr(self, attr):
-        est_cond_add_attr(self.estcond, attr)
+        encoded = encode(attr)
+        est_cond_add_attr(self.estcond, encoded)
 
     def set_order(self, order):
-        est_cond_set_order(self.estcond, order)
+        encoded = encode(order)
+        est_cond_set_order(self.estcond, encoded)
 
     def set_max(self, int max):
         est_cond_set_max(self.estcond, max)
@@ -476,7 +501,8 @@ cdef class Database:
     def get_doc_by_uri(self, uri):
         cdef int id
         self._check()
-        id = est_db_uri_to_id(self.estdb, uri)
+        encoded = encode(uri)
+        id = est_db_uri_to_id(self.estdb, encoded)
         return self.get_doc(id)
 
     def flush(self, int max = 0):
