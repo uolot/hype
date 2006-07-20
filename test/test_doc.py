@@ -111,5 +111,7 @@ def test_keywords():
         assert doc.get_keywords() == {u'key1': u'value', u'key2': u'value2'}
         assert dbdoc.get_keywords() == {u'key1': u'value', u'key2': u'value2'}
         assert dbdoc.get_keywords() == doc.get_keywords()
+        db.remove_keywords_from(dbdoc.id)
+        #assert dbdoc.get_keywords() == {} Segfault :(
     finally:
         db.close()

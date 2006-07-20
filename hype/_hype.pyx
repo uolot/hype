@@ -119,6 +119,9 @@ cdef extern from 'estraier.h':
     int est_db_repair(char *name, int options, int *ecp)
     int est_db_scan_doc(ESTDB *db, ESTDOC *doc, ESTCOND *cond)
     int est_db_inode(ESTDB *db)
+    # int est_db_put_keywords(ESTDB *db, int id, CBMAP *kwords) In python
+    # CBMAP *est_db_get_keywords(ESTDB *db, int id) In python
+    int est_db_out_keywords(ESTDB *db, int id)
 
     # Db-TODO
     int est_db_set_doc_entity(ESTDB *db, int id, char *ptr, int size)
@@ -128,9 +131,6 @@ cdef extern from 'estraier.h':
     char *est_db_meta(ESTDB *db, char *name)
     int *est_db_search_meta(ESTDB **dbs, int dbnum, ESTCOND *cond, int *nump, CBMAP *hints)
     CBMAP *est_db_etch_doc(ESTDB *db, ESTDOC *doc, int max)
-    int est_db_put_keywords(ESTDB *db, int id, CBMAP *kwords)
-    int est_db_out_keywords(ESTDB *db, int id)
-    CBMAP *est_db_get_keywords(ESTDB *db, int id)
     int est_db_measure_doc(ESTDB *db, int id, int parts)
     int est_db_iter_init(ESTDB *db, char *prev)
     int est_db_iter_next(ESTDB *db)
@@ -244,6 +244,9 @@ class DBAddAttributeIndexError(DBError):
 class DBMergeError(DBError):
     pass
 
+class DBRemoveKeywordsError(DBError):
+    pass
+
 cdef class Database # Forward
 cdef class Search # Forward
 
@@ -298,7 +301,7 @@ cdef CBMAP *dict_to_cbmap(d, CBMAP *cbmap):
     for i from 0 <= i < kwlen:
         key = encode(kw[i][0])
         val = encode(kw[i][1])
-        cbmapput(cbmap, key, -1, val, -1, 0)
+        cbmapput(cbmap, key, -1, val, -1, 1)
     return cbmap
 
 cdef cblist_to_list(CBLIST *cl):
@@ -445,7 +448,7 @@ cdef class Document:
         encoded = encode(text)
         est_doc_add_hidden_text(self.estdoc, encoded)
 
-    def set_keywords(self, kwdict, override=False):
+    def set_keywords(self, kwdict):
         self.init_estdoc()
         cdef CBMAP *cbmap
         cbmap = cbmapopen()
@@ -713,6 +716,19 @@ cdef class Database:
     def scan_doc(self, Document doc, Search search):
         self._check()
         return bool(est_db_scan_doc(self.estdb, doc.estdoc, search.condition.estcond))
+
+    def put_keywords_in(self, id, kwdict):
+        doc = self.get_doc(id)
+        doc.set_keywords(kwdict)
+
+    def get_keywords_from(self, id):
+        doc = self.get_doc(id)
+        return doc.get_keywords()
+
+    def remove_keywords_from(self, id):
+        if est_db_out_keywords(self.estdb, id):
+            return True
+        raise DBRemoveKeywordsError("Error while removing keywords from %s" % (id,))
 
     def set_cache_size(self, unsigned long size, anum, tnum, rnum):
         self._check()
