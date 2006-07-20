@@ -85,9 +85,11 @@ def test_db_api():
             doc.add_text(content)
             db1.put_doc(doc)
         assert db1.get_doc_attr(1, '@title')
-        res = db1.search().add(u'@title STREQ 4')
+        res = db1.search(u'four four').add(u'@title STREQ 4')
         assert len(res)
         assert res[0]['@uri'] == u'4'
+        d = res[0]
+        assert db.scan_doc(d, res)
     finally:
         db1.close()
 
