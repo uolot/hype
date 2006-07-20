@@ -76,6 +76,13 @@ cdef extern from 'estraier.h':
     char *cblistval(CBLIST *list, int index, int *sp)       # get value
     void cblistsort(CBLIST *list)                           # obvious
 
+    CBMAP *cbmapopen()
+    int cbmapput(CBMAP *map, char *kbuf, int ksiz, char *vbuf, int vsiz, int over)
+    char *cbmapget(CBMAP *map, char *kbuf, int ksiz, int *sp)
+    CBLIST *cbmapkeys(CBMAP *map)
+    CBLIST *cbmapvals(CBMAP *map)
+    void cbmapclose(CBMAP *map)
+
     char *est_err_msg(int ecode)
 
     # Database API
@@ -153,15 +160,15 @@ cdef extern from 'estraier.h':
     CBLIST *est_doc_texts(ESTDOC *doc) # list of the texts added to the document
     #char *est_doc_cat_texts(ESTDOC *doc) # this is implemented in python
     char *est_doc_hidden_texts(ESTDOC *doc)
+    void est_doc_set_keywords(ESTDOC *doc, CBMAP *kwords)
+    CBMAP *est_doc_keywords(ESTDOC *doc)
+    int est_doc_is_empty(ESTDOC *doc)
+    ESTDOC *est_doc_dup(ESTDOC *doc)
 
     ## Document API that still needs wrapping before the end.
     char *est_doc_dump_draft(ESTDOC *doc) # is this worth?
     # Creates the snippet with highlighted mathing *words in the *doc
     char *est_doc_make_snippet(ESTDOC *doc, CBLIST *words, int wwidth, int hwidth, int awidth)
-    void est_doc_set_keywords(ESTDOC *doc, CBMAP *kwords)
-    CBMAP *est_doc_keywords(ESTDOC *doc)
-    int est_doc_is_empty(ESTDOC *doc)
-    ESTDOC *est_doc_dup(ESTDOC *doc)
     void est_doc_set_score(ESTDOC *doc, int score)
 
     # Condition API
@@ -303,7 +310,7 @@ cdef class Document:
                 attrs.append(cblistval(attrs_c, i, &sp))
             cblistclose(attrs_c)
             return attrs
-    
+
     property texts:
         " A list of texts in the document "
         def __get__(self):
@@ -347,6 +354,19 @@ cdef class Document:
         encoded = encode(value)
         est_doc_add_attr(self.estdoc, name, encoded)
 
+    def is_empty(self):
+        self.init_estdoc()
+        return bool(est_doc_is_empty(self.estdoc))
+
+    def copy(self):
+        self.init_estdoc()
+        cdef ESTDOC *doc_p
+        cdef Document doc
+        doc_p = est_doc_dup(self.estdoc)
+        doc = Document()
+        doc.estdoc = doc_p
+        return doc
+
     def get(self, name, default=None):
         cdef char *value
         self.init_estdoc()
@@ -365,6 +385,36 @@ cdef class Document:
         self.init_estdoc()
         encoded = encode(text)
         est_doc_add_hidden_text(self.estdoc, encoded)
+
+    def set_keywords(self, kwdict, override=False):
+        self.init_estdoc()
+        cdef CBMAP *cbmap
+        cdef int kwlen
+        cbmap = cbmapopen()
+        kw = kwdict.items()
+        kwlen = len(kw)
+        for i from 0 <= i < kwlen:
+            key = kw[i][0]
+            val = kw[i][1]
+            cbmapput(cbmap, key, -1, val, -1, override)
+        est_doc_set_keywords(self.estdoc, cbmap)
+
+    def get_keywords(self):
+        self.init_estdoc()
+        cdef CBMAP *cbmap
+        cdef CBLIST *klist, *vlist
+        cdef int l, i, sp1, sp2
+
+        keywords = {}
+
+        cbmap = est_doc_keywords(self.estdoc)
+        klist = cbmapkeys(cbmap)
+        vlist = cbmapvals(cbmap)
+
+        l = cblistnum(klist)
+        for i from 0 <= i < l:
+            keywords[cblistval(klist, i, &sp1)] = cblistval(vlist, i, &sp2)
+        return keywords
 
 def doc_from_string(char *data):
     cdef ESTDOC *doc_p

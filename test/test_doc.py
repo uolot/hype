@@ -5,10 +5,12 @@ def test_docid():
     db = he.Database(str(py.test.ensuretemp('test.db')))
     try:
         doc = he.Document()
+        assert doc.is_empty()
         doc['@uri'] = u'uri'
         assert doc.id == -1
         db.put_doc(doc)
         assert doc.id != -1
+        assert doc.copy().id == doc.id
         doc = he.Document()
         doc['@uri'] = u'uri2'
         doc.id = 4
@@ -117,4 +119,23 @@ def test_text_post():
         assert db.get_doc(doc.id).texts == [TEXT]
     finally:
         db.close()
-    
+
+def test_keywords():
+    db = he.Database(str(py.test.ensuretemp('test.db123456')))
+    try:
+        TEXT = u'yoyo'
+        doc = he.Document()
+        doc['@uri'] = u'1'
+        doc.set_keywords({'key1': 'value', 'key2': 'value2'})
+        doc.add_text(TEXT)
+        db.put_doc(doc)
+        db.flush()
+        db.sync()
+        db.optimize()
+        dbdoc = db.get_doc(doc.id)
+        assert dbdoc.id == doc.id
+        assert doc.get_keywords() == {'key1': 'value', 'key2': 'value2'}
+        assert dbdoc.get_keywords() == {'key1': 'value', 'key2': 'value2'}
+        assert dbdoc.get_keywords() == doc.get_keywords()
+    finally:
+        db.close()
