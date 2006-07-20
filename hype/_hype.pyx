@@ -54,6 +54,11 @@ ESTEIO = 9997             # I/O problem
 ESTENOITEM = 9998         # no item
 ESTEMISC = 9999           # miscellaneous
 
+ESTRPSTRICT = 1 << 0      # perform strict consistency check
+ESTRPSHODDY = 1 << 1      # omit consistency check
+
+ESTMGCLEAN = 1 << 0       # clean up dispensable regions
+
 cdef extern from 'estraier.h':
 
     ctypedef struct ESTDB:
@@ -102,15 +107,18 @@ cdef extern from 'estraier.h':
     int est_db_edit_doc(ESTDB *db, ESTDOC *doc)
     int est_db_error(ESTDB *db)
     int est_db_fatal(ESTDB *db)
-    
+    char *est_db_get_doc_attr(ESTDB *db, int id, char *name)
+    int est_db_add_attr_index(ESTDB *db, char *name, int type)
+
     # Advanced DB API
+    int est_db_merge(ESTDB *db, char *name, int options)
     int est_db_cache_num(ESTDB *db)
     int est_db_used_cache_size(ESTDB *db)
     void est_db_set_special_cache(ESTDB *db, char *name, int num)
     void est_db_set_cache_size(ESTDB *db, int size, int anum, int tnum, int rnum)
+    int est_db_repair(char *name, int options, int *ecp)
 
     # Db-TODO
-    int est_db_merge(ESTDB *db, char *name, int options)
     int est_db_scan_doc(ESTDB *db, ESTDOC *doc, ESTCOND *cond)
     int est_db_inode(ESTDB *db)
     int est_db_set_doc_entity(ESTDB *db, int id, char *ptr, int size)
@@ -140,11 +148,8 @@ cdef extern from 'estraier.h':
     void est_db_charge_rescc(ESTDB *db, int max)
     CBLIST *est_db_list_rescc(ESTDB *db)
     void est_db_interrupt(ESTDB *db)
-    int est_db_repair(char *name, int options, int *ecp)
     CBLIST *est_hints_to_words(CBMAP *hints)
-    char *est_db_get_doc_attr(ESTDB *db, int id, char *name)
     void est_db_set_wildmax(ESTDB *db, int num)
-    int est_db_add_attr_index(ESTDB *db, char *name, int type)
 
     # Document API
     ESTDOC *est_doc_new()
@@ -164,12 +169,12 @@ cdef extern from 'estraier.h':
     CBMAP *est_doc_keywords(ESTDOC *doc)
     int est_doc_is_empty(ESTDOC *doc)
     ESTDOC *est_doc_dup(ESTDOC *doc)
+    void est_doc_set_score(ESTDOC *doc, int score)
 
     ## Document API that still needs wrapping before the end.
     char *est_doc_dump_draft(ESTDOC *doc) # is this worth?
     # Creates the snippet with highlighted mathing *words in the *doc
     char *est_doc_make_snippet(ESTDOC *doc, CBLIST *words, int wwidth, int hwidth, int awidth)
-    void est_doc_set_score(ESTDOC *doc, int score)
 
     # Condition API
     ESTCOND *est_cond_new()
@@ -183,18 +188,22 @@ cdef extern from 'estraier.h':
     int est_cond_max(ESTCOND *cond)
     char *est_cond_phrase(ESTCOND *cond)
     int est_cond_options(ESTCOND *cond)
-    # int est_cond_auxiliary(ESTCOND *cond) Breaks Win32 as of 1.1.1
     int est_cond_score(ESTCOND *cond, int index)
-    # void est_cond_set_auxiliary(ESTCOND *cond, int min) Breaks Win32 as of 1.1.1
     void est_cond_set_eclipse(ESTCOND *cond, double limit)
     CBLIST *est_cond_attrs(ESTCOND *cond)
-    # int est_cond_auxiliary_word(ESTCOND *cond, char *word) Breaks Win32 as of 1.1.1
     int *est_cond_shadows(ESTCOND *cond, int id, int *np)
-    ESTCOND *est_cond_dup(ESTCOND *cond)
-    int est_cond_skip(ESTCOND *cond)
     void est_cond_set_skip(ESTCOND *cond, int skip)
+    int est_cond_skip(ESTCOND *cond)
+    ESTCOND *est_cond_dup(ESTCOND *cond)
     int est_cond_mask(ESTCOND *cond)
-    #void est_cond_set_expander(ESTCOND *cond, void (*func)(char *, CBLIST *))
+    void est_cond_set_mask(ESTCOND *cond, int mask)
+
+    # int est_cond_auxiliary(ESTCOND *cond) Breaks Win32 as of 1.1.1
+    # void est_cond_set_auxiliary(ESTCOND *cond, int min) Breaks Win32 as of 1.1.1
+    # int est_cond_auxiliary_word(ESTCOND *cond, char *word) Breaks Win32 as of 1.1.1
+    
+    # Condition TODO
+    void est_cond_set_expander(ESTCOND *cond, void (*func)(char *, CBLIST *))
 
 class HyperEstraierError(Exception):
     pass
@@ -224,6 +233,15 @@ class DBSyncError(DBError):
     pass
 
 class DBOptimizeError(DBError):
+    pass
+
+class DBRepairError(DBError):
+    pass
+
+class DBAddAttributeIndexError(DBError):
+    pass
+
+class DBMergeError(DBError):
     pass
 
 cdef class Database # Forward
@@ -267,6 +285,12 @@ def decode(encoded_string):
     # will only ever decode utf-8 encoded strings
     return encoded_string.decode('utf-8')
 
+def repair(char *path, int options):
+    cdef int ecp
+    if est_db_repair(path, options, &ecp):
+        return True
+    raise DBRepairError("Error while repairing the database: %d" % ecp)
+
 cdef class Document:
     cdef ESTDOC *estdoc
     
@@ -295,6 +319,11 @@ cdef class Document:
     property uri:
         def __get__(self):
             return self.get('@uri')
+
+    property score:
+        def __set__(self, score):
+            """ Sets substitute score """
+            est_doc_set_score(self.estdoc, score)
 
     property attributes:
         " A list of attribute names "
@@ -398,6 +427,7 @@ cdef class Document:
             val = encode(kw[i][1])
             cbmapput(cbmap, key, -1, val, -1, override)
         est_doc_set_keywords(self.estdoc, cbmap)
+        # Lifetime is tied to this object, we don't need to call *close()
 
     def get_keywords(self):
         self.init_estdoc()
@@ -414,6 +444,7 @@ cdef class Document:
         l = cblistnum(klist)
         for i from 0 <= i < l:
             keywords[decode(cblistval(klist, i, &sp1))] = decode(cblistval(vlist, i, &sp2))
+        # Lifetime is tied to this object, hence we don't call the *close()
         return keywords
 
 def doc_from_string(char *data):
@@ -449,11 +480,23 @@ cdef class Condition:
         def __set__(self, order):
             self.set_order(order)
     
+    property offset:
+        def __get__(self):
+            return est_cond_skip(self.estcond)
+        def __set__(self, off):
+            self.set_offset(off)
+    
     property options:
         def __get__(self):
             return est_cond_options(self.estcond)
         def __set__(self, int options):
             self.set_options(options)
+    
+    property mask:
+        def __get__(self):
+            return est_cond_mask(self.estcond)
+        def __set__(self, int mask):
+            self.set_mask(mask)
     
     #property aux:
     #    def __get__(self):
@@ -485,6 +528,14 @@ cdef class Condition:
     #def aux_used(self, word):
     #    return bool(est_cond_auxiliary_word(self.estcond, word))
     
+    def copy(self):
+        cdef ESTCOND *cond_p
+        cdef Condition cond
+        cond_p = est_cond_dup(self.estcond)
+        cond = Condition()
+        cond.estcond = cond_p
+        return cond
+    
     def shadows(self, int parent):
         cdef int* _res
         cdef int np, i
@@ -514,6 +565,9 @@ cdef class Condition:
 
     def set_options(self, int options):
         est_cond_set_options(self.estcond, options)
+    
+    def set_mask(self, int mask):
+        est_cond_set_mask(self.estcond, mask)
 
     def __dealloc__(self):
         est_cond_delete(self.estcond)
@@ -619,13 +673,28 @@ cdef class Database:
         self._check()
         if est_db_edit_doc(self.estdb, doc.estdoc):
             return True
-        raise DBEditError("Error while editing an object")
+        raise DBEditError("Error while editing object %s" % (doc.id,))
 
     def remove(self, Document doc , int options = ESTODCLEAN):
         self._check()
         if est_db_out_doc(self.estdb, doc.id, options):
             return True
-        raise DBRemoveError("Error while removing an object")
+        raise DBRemoveError("Error while removing object %s" % (doc.id,))
+
+    def add_attr_index(self, name, type):
+        self._check()
+        if est_db_add_attr_index(self.estdb, name, type):
+            return True
+        raise DBAddAttributeIndexError("Error while adding attribute index %s" % (encname,))
+
+    def merge(self, path, int options = ESTMGCLEAN):
+        self._check()
+        if est_db_merge(self.estdb, path, options):
+            return True
+        raise DBMergeError("Error while merging database %s" % (path,))
+
+    def get_doc_attr(self, int id, name):
+        return est_db_get_doc_attr(self.estdb, id, name)
 
     def set_cache_size(self, unsigned long size, anum, tnum, rnum):
         est_db_set_cache_size(self.estdb, size, anum, tnum, rnum)
@@ -691,6 +760,13 @@ cdef class Search:
         Set the ordering expression.
         """
         self.condition.set_order(expr)
+        return self
+    
+    def mask(self, mask):
+        """
+        Set the mask for the condition when metasearch is used.
+        """
+        self.condition.set_mask(mask)
         return self
     
     def __getitem__(self, s):

@@ -94,34 +94,6 @@ def test_text():
     finally:
         db.close()
 
-def test_text_post():
-    py.test.skip("We need to implement a way to edit even the content of a document")
-    db = he.Database(str(py.test.ensuretemp('test.db12345')))
-    try:
-        TEXT = u'yooooooo'
-        doc = he.Document()
-        doc['@uri'] = u'fooo'
-        o = doc.id
-        assert doc.id == -1
-        db.put_doc(doc)
-        o1 = doc.id
-        assert doc.id != -1
-        doc.add_text(TEXT)
-        o2 = doc.id
-        assert doc.id != -1
-        db.commit(doc)
-        db.flush()
-        db.sync()
-        db.optimize()
-        o3 = doc.id
-        assert doc.id != -1
-        assert -1 == o != o1 == o2 == o3
-        assert doc.texts
-        assert doc.text
-        assert db.get_doc(doc.id).texts == [TEXT]
-    finally:
-        db.close()
-
 def test_keywords():
     db = he.Database(str(py.test.ensuretemp('test.db123456')))
     try:

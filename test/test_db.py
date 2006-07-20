@@ -70,6 +70,44 @@ def test_cache():
     db.set_cache_size(2**16, 60, 60, 60)
     db.set_special_cache_size('@uri', 60)
 
+def test_db_api():
+    ID = 1
+    doc = db.get_doc(ID)
+    assert doc['@title'] == db.get_doc_attr(ID, '@title')
+    NAME = str(py.test.ensuretemp('testdb.db2'))
+    db1 = he.Database(NAME)
+    try:
+        db1.add_attr_index('@title', he.ESTIDXATTRSTR)
+        for title, content in [(u'4', u'four four'), (u'5', u'five five'), (u'6', u'six six')]:
+            doc = he.Document()
+            doc['@uri'] = title
+            doc['@title'] = title
+            doc.add_text(content)
+            db1.put_doc(doc)
+        assert db1.get_doc_attr(1, '@title')
+        res = db1.search().add(u'@title STREQ 4')
+        assert len(res)
+        assert res[0]['@uri'] == u'4'
+    finally:
+        db1.close()
+
+def test_merge():
+    NAME = str(py.test.ensuretemp('testdb.db1'))
+    db1 = he.Database(NAME)
+    for title, content in [(u'4', u'four four'), (u'5', u'five five'), (u'6', u'six six')]:
+        doc = he.Document()
+        doc['@uri'] = title
+        doc['@title'] = title
+        doc.add_text(content)
+        db1.put_doc(doc)
+    assert len(db1) == 3
+    db1.close()
+    assert len(db) == 3
+    db.merge(NAME)
+    assert len(db) == 6
+    d = db.get_doc(4)
+    assert d['@title'] == u'4'
+
 def test_crash_and_burn():
     db.close()
     py.test.raises(Exception, db.search)

@@ -1,4 +1,4 @@
-from hype._hype import Database, Document, Condition
+from hype._hype import Database, Document, Condition, repair
 
 from hype._hype import HyperEstraierError, DBError
 from hype._hype import DocumentError, DBRemoveError
@@ -53,4 +53,9 @@ from hype._hype import ESTEDB           # database problem
 from hype._hype import ESTEIO           # I/O problem
 from hype._hype import ESTENOITEM       # no item
 from hype._hype import ESTEMISC         # miscellaneous
+
+from hype._hype import ESTRPSTRICT      # perform strict consistency check
+from hype._hype import ESTRPSHODDY      # omit consistency check
+
+from hype._hype import ESTMGCLEAN       # clean up dispensable regions
 
