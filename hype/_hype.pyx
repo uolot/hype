@@ -8,13 +8,19 @@ cdef extern from 'stdlib.h':
 cdef extern from 'string.h':
     int strlen(char *s)
 
-ESTDBREADER = 1 << 0
-ESTDBWRITER = 1 << 1
-ESTDBCREAT = 1 << 2
-ESTDBTRUNC = 1 << 3
-ESTDBNOLCK = 1 << 4
-ESTDBLCKNB = 1 << 5
-ESTDBPERFNG = 1 << 6
+ESTDBREADER = 1 << 0      # open as a reader
+ESTDBWRITER = 1 << 1      # open as a writer
+ESTDBCREAT = 1 << 2       # a writer creating
+ESTDBTRUNC = 1 << 3       # a writer truncating
+ESTDBNOLCK = 1 << 4       # open without locking
+ESTDBLCKNB = 1 << 5       # lock without blocking
+ESTDBPERFNG = 1 << 6      # use perfect N-gram analyzer
+ESTDBCHRCAT = 1 << 11     # use character category analyzer
+ESTDBLARGE = 1 << 20      # large tuning (more than 300000 documents)
+ESTDBHUGE = 1 << 21       # huge tuning (more than 1000000 documents)
+ESTDBSCVOID = 1 << 25     # store scores as void
+ESTDBSCINT = 1 << 26      # store scores as integer
+ESTDBSCASIS = 1 << 27     # refrain from adjustment of scores
 
 ESTCONDSURE = 1 << 0      # check every N-gram key
 ESTCONDUSUAL = 1 << 1     # check N-gram keys skipping by one
@@ -24,7 +30,8 @@ ESTCONDNOIDF = 1 << 4     # without TF-IDF tuning
 ESTCONDSIMPLE = 1 << 10   # with the simplified phrase
 ESTCONDSCFB = 1 << 30     # feed back scores (for debug)
 
-ESTPDCLEAN = 1 << 0
+ESTPDCLEAN = 1 << 0       # clean up dispensable regions
+ESTPDWEIGHT = 1 << 1      # weight scores statically when indexing
 
 ESTGDNOATTR = 1 << 0      # no attributes
 ESTGDNOTEXT = 1 << 1      # no text
@@ -33,6 +40,19 @@ ESTOPTNOPURGE = 1 << 0    # omit purging dispensable region of deleted
 ESTOPTNODBOPT = 1 << 1    # omit optimization of the database files
 
 ESTODCLEAN = 1 << 0       # clean up dispensable regions
+
+ESTIDXATTRSEQ = 0         # for multipurpose sequencial access method
+ESTIDXATTRSTR = 1         # for narrowing with attributes as strings
+ESTIDXATTRNUM = 2         # for narrowing with attributes as numbers
+
+ESTENOERR = 9992          # no error
+ESTEINVAL = 9993          # invalid argument
+ESTEACCES = 9994          # access forbidden
+ESTELOCK = 9995           # lock failure
+ESTEDB = 9996             # database problem
+ESTEIO = 9997             # I/O problem
+ESTENOITEM = 9998         # no item
+ESTEMISC = 9999           # miscellaneous
 
 cdef extern from 'estraier.h':
 
@@ -83,6 +103,7 @@ cdef extern from 'estraier.h':
     void est_db_set_cache_size(ESTDB *db, int size, int anum, int tnum, int rnum)
 
     # Db-TODO
+    int est_db_merge(ESTDB *db, char *name, int options)
     int est_db_scan_doc(ESTDB *db, ESTDOC *doc, ESTCOND *cond)
     int est_db_inode(ESTDB *db)
     int est_db_set_doc_entity(ESTDB *db, int id, char *ptr, int size)
@@ -90,6 +111,7 @@ cdef extern from 'estraier.h':
     void est_db_add_meta(ESTDB *db, char *name, char *value)
     CBLIST *est_db_meta_names(ESTDB *db)
     char *est_db_meta(ESTDB *db, char *name)
+    int *est_db_search_meta(ESTDB **dbs, int dbnum, ESTCOND *cond, int *nump, CBMAP *hints)
     CBMAP *est_db_etch_doc(ESTDB *db, ESTDOC *doc, int max)
     int est_db_put_keywords(ESTDB *db, int id, CBMAP *kwords)
     int est_db_out_keywords(ESTDB *db, int id)
@@ -105,11 +127,17 @@ cdef extern from 'estraier.h':
     char *est_db_keyword_iter_next(ESTDB *db)
     int est_db_keyword_rec_size(ESTDB *db, char *word)
     int *est_db_keyword_search(ESTDB *db, char *word, int *nump)
+    void est_db_set_informer(ESTDB *db, void (*func)(char *, void *), void *opaque)
     void est_db_fill_key_cache(ESTDB *db)
     void est_db_refresh_rescc(ESTDB *db)
     void est_db_charge_rescc(ESTDB *db, int max)
     CBLIST *est_db_list_rescc(ESTDB *db)
     void est_db_interrupt(ESTDB *db)
+    int est_db_repair(char *name, int options, int *ecp)
+    CBLIST *est_hints_to_words(CBMAP *hints)
+    char *est_db_get_doc_attr(ESTDB *db, int id, char *name)
+    void est_db_set_wildmax(ESTDB *db, int num)
+    int est_db_add_attr_index(ESTDB *db, char *name, int type)
 
     # Document API
     ESTDOC *est_doc_new()
@@ -133,6 +161,8 @@ cdef extern from 'estraier.h':
     void est_doc_set_keywords(ESTDOC *doc, CBMAP *kwords)
     CBMAP *est_doc_keywords(ESTDOC *doc)
     int est_doc_is_empty(ESTDOC *doc)
+    ESTDOC *est_doc_dup(ESTDOC *doc)
+    void est_doc_set_score(ESTDOC *doc, int score)
 
     # Condition API
     ESTCOND *est_cond_new()
@@ -153,6 +183,11 @@ cdef extern from 'estraier.h':
     CBLIST *est_cond_attrs(ESTCOND *cond)
     # int est_cond_auxiliary_word(ESTCOND *cond, char *word) Breaks Win32 as of 1.1.1
     int *est_cond_shadows(ESTCOND *cond, int id, int *np)
+    ESTCOND *est_cond_dup(ESTCOND *cond)
+    int est_cond_skip(ESTCOND *cond)
+    void est_cond_set_skip(ESTCOND *cond, int skip)
+    int est_cond_mask(ESTCOND *cond)
+    #void est_cond_set_expander(ESTCOND *cond, void (*func)(char *, CBLIST *))
 
 class HyperEstraierError(Exception):
     pass
