@@ -118,9 +118,9 @@ cdef extern from 'estraier.h':
     void est_db_set_cache_size(ESTDB *db, int size, int anum, int tnum, int rnum)
     int est_db_repair(char *name, int options, int *ecp)
     int est_db_scan_doc(ESTDB *db, ESTDOC *doc, ESTCOND *cond)
+    int est_db_inode(ESTDB *db)
 
     # Db-TODO
-    int est_db_inode(ESTDB *db)
     int est_db_set_doc_entity(ESTDB *db, int id, char *ptr, int size)
     char *est_db_get_doc_entity(ESTDB *db, int id, int *sp)
     void est_db_add_meta(ESTDB *db, char *name, char *value)
@@ -607,6 +607,11 @@ cdef class Database:
             self._check()
             return est_err_msg(self._ecode)
 
+    property inode:
+        def __get__(self):
+            self._check()
+            return est_db_inode(self.estdb)
+
     property efatal:
         def __get__(self):
             self._check()
@@ -695,15 +700,19 @@ cdef class Database:
         raise DBMergeError("Error while merging database %s" % (path,))
 
     def get_doc_attr(self, int id, name):
+        self._check()
         return est_db_get_doc_attr(self.estdb, id, name)
 
     def scan_doc(self, Document doc, Search search):
+        self._check()
         return bool(est_db_scan_doc(self.estdb, doc.estdoc, search.condition.estcond))
 
     def set_cache_size(self, unsigned long size, anum, tnum, rnum):
+        self._check()
         est_db_set_cache_size(self.estdb, size, anum, tnum, rnum)
 
     def set_special_cache_size(self, name, num):
+        self._check()
         est_db_set_special_cache(self.estdb, name, num)
 
 cdef class Search:

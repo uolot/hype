@@ -58,6 +58,9 @@ def test_commit_remove():
 def test_name():
     assert db.name == NAME
 
+def test_inode():
+    assert db.inode
+
 def test_len():
     assert len(db) == 3
 
