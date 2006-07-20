@@ -10,7 +10,9 @@ def test_docid():
         assert doc.id == -1
         db.put_doc(doc)
         assert doc.id != -1
-        assert doc.copy().id == doc.id
+        doc_copy = doc.copy()
+        assert doc_copy.id == doc.id
+        assert doc_copy != doc
         doc = he.Document()
         doc['@uri'] = u'uri2'
         doc.id = 4
@@ -126,7 +128,7 @@ def test_keywords():
         TEXT = u'yoyo'
         doc = he.Document()
         doc['@uri'] = u'1'
-        doc.set_keywords({'key1': 'value', 'key2': 'value2'})
+        doc.set_keywords({u'key1': u'value', u'key2': u'value2'})
         doc.add_text(TEXT)
         db.put_doc(doc)
         db.flush()
@@ -134,8 +136,8 @@ def test_keywords():
         db.optimize()
         dbdoc = db.get_doc(doc.id)
         assert dbdoc.id == doc.id
-        assert doc.get_keywords() == {'key1': 'value', 'key2': 'value2'}
-        assert dbdoc.get_keywords() == {'key1': 'value', 'key2': 'value2'}
+        assert doc.get_keywords() == {u'key1': u'value', u'key2': u'value2'}
+        assert dbdoc.get_keywords() == {u'key1': u'value', u'key2': u'value2'}
         assert dbdoc.get_keywords() == doc.get_keywords()
     finally:
         db.close()

@@ -83,6 +83,11 @@ def test_order():
     assert len(result) == 6
     assert uris(result) == [u'rfc1503.txt', u'rfc1505.txt', u'rfc1507.txt', u'rfc1508.txt', u'rfc1510.txt', u'rfc1538.txt']
 
+def test_offset():
+    result = db.search(u'access control').order(u'@title STRA').offset(3)
+    assert len(result) == 3
+    assert uris(result) == [u'rfc1508.txt', u'rfc1510.txt', u'rfc1538.txt']
+
 def teardown_module(mod):
     mod.db.close()
 

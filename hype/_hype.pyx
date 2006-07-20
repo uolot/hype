@@ -394,8 +394,8 @@ cdef class Document:
         kw = kwdict.items()
         kwlen = len(kw)
         for i from 0 <= i < kwlen:
-            key = kw[i][0]
-            val = kw[i][1]
+            key = encode(kw[i][0])
+            val = encode(kw[i][1])
             cbmapput(cbmap, key, -1, val, -1, override)
         est_doc_set_keywords(self.estdoc, cbmap)
 
@@ -413,7 +413,7 @@ cdef class Document:
 
         l = cblistnum(klist)
         for i from 0 <= i < l:
-            keywords[cblistval(klist, i, &sp1)] = cblistval(vlist, i, &sp2)
+            keywords[decode(cblistval(klist, i, &sp1))] = decode(cblistval(vlist, i, &sp2))
         return keywords
 
 def doc_from_string(char *data):
@@ -508,6 +508,9 @@ cdef class Condition:
 
     def set_max(self, int max):
         est_cond_set_max(self.estcond, max)
+    
+    def set_offset(self, int off):
+        est_cond_set_skip(self.estcond, off)
 
     def set_options(self, int options):
         est_cond_set_options(self.estcond, options)
@@ -669,6 +672,13 @@ cdef class Search:
         self.condition.set_max(max)
         return self
 
+    def offset(self, off):
+        """
+        Set the offset of the result list returned by the search
+        """
+        self.condition.set_offset(off)
+        return self
+
     def add(self, expr):
         """
         Add an attribute expression.
@@ -682,7 +692,7 @@ cdef class Search:
         """
         self.condition.set_order(expr)
         return self
-
+    
     def __getitem__(self, s):
         """
         Return an item or slice of the results as one or a sequence of
