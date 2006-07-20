@@ -276,6 +276,42 @@ _filters = {'@mdate': (dt_to_str, dt_from_str),
             '@weight': (unicode, float),
             }
 
+cdef cbmap_to_dict(CBMAP *cm):
+    cdef CBLIST *klist, *vlist
+    cdef int l, i, sp1, sp2
+
+    keywords = {}
+
+    klist = cbmapkeys(cm)
+    vlist = cbmapvals(cm)
+
+    l = cblistnum(klist)
+    for i from 0 <= i < l:
+        keywords[decode(cblistval(klist, i, &sp1))] = decode(cblistval(vlist, i, &sp2))
+    # Lifetime is tied to this object, hence we don't call the *close()
+    return keywords
+
+cdef CBMAP *dict_to_cbmap(d, CBMAP *cbmap):
+    cdef int kwlen
+    kw = d.items()
+    kwlen = len(kw)
+    for i from 0 <= i < kwlen:
+        key = encode(kw[i][0])
+        val = encode(kw[i][1])
+        cbmapput(cbmap, key, -1, val, -1, 0)
+    return cbmap
+
+cdef cblist_to_list(CBLIST *cl):
+    cdef int sp, cl_length, i
+    cl_length = cblistnum(cl)
+    l = []
+    for i from 0 <= i < cl_length:
+        l.append(cblistval(cl, i, &sp))
+    return l
+
+cdef list_to_cblist(l, CBLIST *cl):
+    pass
+
 def encode(unicode_string):
     if not isinstance(unicode_string, unicode):
         raise DocumentUnicodeError("Hype only accepts unicode text as input")
@@ -333,11 +369,8 @@ cdef class Document:
             cdef int attrs_length, i, sp
             self.init_estdoc()
             attrs_c = est_doc_attr_names(self.estdoc)
-            attrs_length = cblistnum(attrs_c)
             cblistsort(attrs_c)
-            attrs = []
-            for i from 0 <= i < attrs_length:
-                attrs.append(cblistval(attrs_c, i, &sp))
+            attrs = cblist_to_list(attrs_c)
             cblistclose(attrs_c)
             return attrs
 
@@ -348,11 +381,7 @@ cdef class Document:
             cdef int texts_length, i, sp
             self.init_estdoc()
             _texts = est_doc_texts(self.estdoc)
-            texts_length = cblistnum(_texts)
-            texts = []
-            for i from 0 <= i < texts_length:
-                decoded = decode(cblistval(_texts, i, &sp))
-                texts.append(decoded)
+            texts = cblist_to_list(_texts)
             # We don't need to close the list since its life is already
             # synchronous with the life of the document
             return texts
@@ -419,34 +448,17 @@ cdef class Document:
     def set_keywords(self, kwdict, override=False):
         self.init_estdoc()
         cdef CBMAP *cbmap
-        cdef int kwlen
         cbmap = cbmapopen()
-        kw = kwdict.items()
-        kwlen = len(kw)
-        for i from 0 <= i < kwlen:
-            key = encode(kw[i][0])
-            val = encode(kw[i][1])
-            cbmapput(cbmap, key, -1, val, -1, override)
+        cbmap = dict_to_cbmap(kwdict, cbmap)
         est_doc_set_keywords(self.estdoc, cbmap)
         # Lifetime is tied to this object, we don't need to call *close()
 
     def get_keywords(self):
         self.init_estdoc()
         cdef CBMAP *cbmap
-        cdef CBLIST *klist, *vlist
-        cdef int l, i, sp1, sp2
-
-        keywords = {}
-
         cbmap = est_doc_keywords(self.estdoc)
-        klist = cbmapkeys(cbmap)
-        vlist = cbmapvals(cbmap)
-
-        l = cblistnum(klist)
-        for i from 0 <= i < l:
-            keywords[decode(cblistval(klist, i, &sp1))] = decode(cblistval(vlist, i, &sp2))
-        # Lifetime is tied to this object, hence we don't call the *close()
-        return keywords
+        return cbmap_to_dict(cbmap)
+        # Lifetime is tied to this object, we don't need to call *close()
 
 def doc_from_string(char *data):
     cdef ESTDOC *doc_p
@@ -514,14 +526,9 @@ cdef class Condition:
             cdef CBLIST *_attrs
             cdef int _attrs_length, i, sp
             _attrs = est_cond_attrs(self.estcond)
-            _attrs_length = cblistnum(_attrs)
-            attrs = []
-            for i from 0 <= i < _attrs_length:
-                decoded = decode(cblistval(_attrs, i, &sp))
-                texts.append(decoded)
+            return cblist_to_list(_attrs)
             # We don't need to close the list since its life is already
             # synchronous with the life of the condition
-            return attrs
 
     def get_score(self, index):
         return est_cond_score(self.estcond, index)
