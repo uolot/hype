@@ -100,7 +100,7 @@ def test_keywords():
         TEXT = u'yoyo'
         doc = he.Document()
         doc['@uri'] = u'1'
-        doc.set_keywords({u'key1': u'value', u'key2': u'value2'})
+        doc.set_keywords({u'key1': 1, u'key2': 1})
         doc.add_text(TEXT)
         db.put_doc(doc)
         db.flush()
@@ -108,10 +108,26 @@ def test_keywords():
         db.optimize()
         dbdoc = db.get_doc(doc.id)
         assert dbdoc.id == doc.id
-        assert doc.get_keywords() == {u'key1': u'value', u'key2': u'value2'}
-        assert dbdoc.get_keywords() == {u'key1': u'value', u'key2': u'value2'}
+        assert doc.get_keywords() == {u'key1': 1, u'key2': 1}
+        assert dbdoc.get_keywords() == {u'key1': 1, u'key2': 1}
         assert dbdoc.get_keywords() == doc.get_keywords()
         db.remove_keywords_from(dbdoc.id)
-        #assert dbdoc.get_keywords() == {} Segfault :(
+        dbdoc = db.get_doc(dbdoc.id)
+        assert dbdoc.get_keywords() == {}
     finally:
         db.close()
+
+def test_etch():
+    db = he.Database(str(py.test.ensuretemp('test.db_unique')))
+    try:
+        TEXT = u"I'm your baby and I want to be etched. What do you think? be be be be"
+        doc = he.Document()
+        doc['@uri'] = u'1'
+        doc.add_text(TEXT)
+        d = db.etch(doc, 1)
+        print d
+        assert d == {u'be': 8246}
+    finally:
+        db.close()
+
+

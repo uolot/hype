@@ -2,6 +2,13 @@ import time
 import rfc822
 from dateutil.parser import parse
 
+__version__ = "Hype version 0.01"
+
+__herequired__ = "1.3.3"
+
+cdef extern from 'Python.h':
+    object PyString_FromString(char *str)
+
 cdef extern from 'stdlib.h':
     void free(void *)
 
@@ -76,6 +83,8 @@ cdef extern from 'estraier.h':
     ctypedef struct CBLIST:
         pass
 
+    char *est_version
+
     void cblistclose(CBLIST *list)                          # close cblist
     int cblistnum(CBLIST *list)                             # length of cblist
     char *cblistval(CBLIST *list, int index, int *sp)       # get value
@@ -83,7 +92,6 @@ cdef extern from 'estraier.h':
 
     CBMAP *cbmapopen()
     int cbmapput(CBMAP *map, char *kbuf, int ksiz, char *vbuf, int vsiz, int over)
-    char *cbmapget(CBMAP *map, char *kbuf, int ksiz, int *sp)
     CBLIST *cbmapkeys(CBMAP *map)
     CBLIST *cbmapvals(CBMAP *map)
     void cbmapclose(CBMAP *map)
@@ -109,6 +117,11 @@ cdef extern from 'estraier.h':
     int est_db_fatal(ESTDB *db)
     char *est_db_get_doc_attr(ESTDB *db, int id, char *name)
     int est_db_add_attr_index(ESTDB *db, char *name, int type)
+    # int est_db_put_keywords(ESTDB *db, int id, CBMAP *kwords) In python
+    # CBMAP *est_db_get_keywords(ESTDB *db, int id) In python
+    int est_db_out_keywords(ESTDB *db, int id)
+    CBMAP *est_db_etch_doc(ESTDB *db, ESTDOC *doc, int max)
+    int *est_db_keyword_search(ESTDB *db, char *word, int *nump)
 
     # Advanced DB API
     int est_db_merge(ESTDB *db, char *name, int options)
@@ -119,18 +132,14 @@ cdef extern from 'estraier.h':
     int est_db_repair(char *name, int options, int *ecp)
     int est_db_scan_doc(ESTDB *db, ESTDOC *doc, ESTCOND *cond)
     int est_db_inode(ESTDB *db)
-    # int est_db_put_keywords(ESTDB *db, int id, CBMAP *kwords) In python
-    # CBMAP *est_db_get_keywords(ESTDB *db, int id) In python
-    int est_db_out_keywords(ESTDB *db, int id)
 
-    # Db-TODO
+    # DB TODO
     int est_db_set_doc_entity(ESTDB *db, int id, char *ptr, int size)
     char *est_db_get_doc_entity(ESTDB *db, int id, int *sp)
     void est_db_add_meta(ESTDB *db, char *name, char *value)
     CBLIST *est_db_meta_names(ESTDB *db)
     char *est_db_meta(ESTDB *db, char *name)
     int *est_db_search_meta(ESTDB **dbs, int dbnum, ESTCOND *cond, int *nump, CBMAP *hints)
-    CBMAP *est_db_etch_doc(ESTDB *db, ESTDOC *doc, int max)
     int est_db_measure_doc(ESTDB *db, int id, int parts)
     int est_db_iter_init(ESTDB *db, char *prev)
     int est_db_iter_next(ESTDB *db)
@@ -141,8 +150,6 @@ cdef extern from 'estraier.h':
     int est_db_keyword_iter_init(ESTDB *db)
     char *est_db_keyword_iter_next(ESTDB *db)
     int est_db_keyword_rec_size(ESTDB *db, char *word)
-    int *est_db_keyword_search(ESTDB *db, char *word, int *nump)
-    void est_db_set_informer(ESTDB *db, void (*func)(char *, void *), void *opaque)
     void est_db_fill_key_cache(ESTDB *db)
     void est_db_refresh_rescc(ESTDB *db)
     void est_db_charge_rescc(ESTDB *db, int max)
@@ -171,7 +178,7 @@ cdef extern from 'estraier.h':
     ESTDOC *est_doc_dup(ESTDOC *doc)
     void est_doc_set_score(ESTDOC *doc, int score)
 
-    ## Document API that still needs wrapping before the end.
+    ## Document TODO
     char *est_doc_dump_draft(ESTDOC *doc) # is this worth?
     # Creates the snippet with highlighted mathing *words in the *doc
     char *est_doc_make_snippet(ESTDOC *doc, CBLIST *words, int wwidth, int hwidth, int awidth)
@@ -202,8 +209,11 @@ cdef extern from 'estraier.h':
     # void est_cond_set_auxiliary(ESTCOND *cond, int min) Breaks Win32 as of 1.1.1
     # int est_cond_auxiliary_word(ESTCOND *cond, char *word) Breaks Win32 as of 1.1.1
     
-    # Condition TODO
+    # TODO
     void est_cond_set_expander(ESTCOND *cond, void (*func)(char *, CBLIST *))
+    void est_db_set_informer(ESTDB *db, void (*func)(char *, void *), void *opaque)
+
+EST_VERSION = PyString_FromString(est_version)
 
 class HyperEstraierError(Exception):
     pass
@@ -281,6 +291,7 @@ _filters = {'@mdate': (dt_to_str, dt_from_str),
 
 cdef cbmap_to_dict(CBMAP *cm):
     cdef CBLIST *klist, *vlist
+    cdef char *key, *val
     cdef int l, i, sp1, sp2
 
     keywords = {}
@@ -290,8 +301,12 @@ cdef cbmap_to_dict(CBMAP *cm):
 
     l = cblistnum(klist)
     for i from 0 <= i < l:
-        keywords[decode(cblistval(klist, i, &sp1))] = decode(cblistval(vlist, i, &sp2))
-    # Lifetime is tied to this object, hence we don't call the *close()
+        key = cblistval(klist, i, &sp1)
+        val = cblistval(vlist, i, &sp2)
+        keywords[decode(key)] = int(val)
+
+    cblistclose(vlist)
+    cblistclose(klist)
     return keywords
 
 cdef CBMAP *dict_to_cbmap(d, CBMAP *cbmap):
@@ -300,7 +315,7 @@ cdef CBMAP *dict_to_cbmap(d, CBMAP *cbmap):
     kwlen = len(kw)
     for i from 0 <= i < kwlen:
         key = encode(kw[i][0])
-        val = encode(kw[i][1])
+        val = str(kw[i][1])
         cbmapput(cbmap, key, -1, val, -1, 1)
     return cbmap
 
@@ -452,16 +467,17 @@ cdef class Document:
         self.init_estdoc()
         cdef CBMAP *cbmap
         cbmap = cbmapopen()
-        cbmap = dict_to_cbmap(kwdict, cbmap)
+        dict_to_cbmap(kwdict, cbmap)
         est_doc_set_keywords(self.estdoc, cbmap)
-        # Lifetime is tied to this object, we don't need to call *close()
 
     def get_keywords(self):
         self.init_estdoc()
         cdef CBMAP *cbmap
         cbmap = est_doc_keywords(self.estdoc)
-        return cbmap_to_dict(cbmap)
-        # Lifetime is tied to this object, we don't need to call *close()
+        if cbmap != NULL:
+            d = cbmap_to_dict(cbmap)
+            return d
+        return {}
 
 def doc_from_string(char *data):
     cdef ESTDOC *doc_p
@@ -685,6 +701,16 @@ cdef class Database:
         self._check()
         return Search(self, phrase, simple)
 
+    def keyword_search(self, words):
+        cdef int *results
+        cdef int results_len
+        results = est_db_keyword_search(self.estdb, words, &results_len)
+        res = []
+        for i from 0 <= i < results_len:
+            res.append(self.get_doc(results[i]))
+        free(results)
+        return res
+
     def commit(self, Document doc):
         self._check()
         if est_db_edit_doc(self.estdb, doc.estdoc):
@@ -729,6 +755,12 @@ cdef class Database:
         if est_db_out_keywords(self.estdb, id):
             return True
         raise DBRemoveKeywordsError("Error while removing keywords from %s" % (id,))
+
+    def etch(self, Document doc, int max):
+        cdef CBMAP *cbmap
+        cbmap = est_db_etch_doc(self.estdb, doc.estdoc, max)
+        d = cbmap_to_dict(cbmap)
+        return d
 
     def set_cache_size(self, unsigned long size, anum, tnum, rnum):
         self._check()

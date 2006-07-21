@@ -1,3 +1,11 @@
+from hype._hype import __herequired__
+from hype._hype import EST_VERSION
+_vers = __herequired__.split('.')
+_estvers = EST_VERSION.split('.')
+for a, b in zip(map(int, _vers), map(int, _estvers)):
+    if a > b:
+        raise Exception("Required HyperEstraier Version %s" % (__herequired__,))
+
 from hype._hype import Database, Document, Condition, repair
 
 from hype._hype import HyperEstraierError, DBError
