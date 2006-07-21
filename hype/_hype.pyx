@@ -66,7 +66,17 @@ ESTRPSHODDY = 1 << 1      # omit consistency check
 
 ESTMGCLEAN = 1 << 0       # clean up dispensable regions
 
+ESTECLSIMURL = 10.0       # eclipse considering similarity and URL
+ESTECLSERV = 100.0        # eclipse on server basis
+ESTECLDIR = 101.0         # eclipse on directory basis
+ESTECLFILE = 102.0        # eclipse on file basis
+
 cdef extern from 'estraier.h':
+    ctypedef struct CBMAP:
+        pass
+
+    ctypedef struct CBLIST:
+        pass
 
     ctypedef struct ESTDB:
         pass
@@ -75,12 +85,6 @@ cdef extern from 'estraier.h':
         pass
 
     ctypedef struct ESTCOND:
-        pass
-
-    ctypedef struct CBMAP:
-        pass
-
-    ctypedef struct CBLIST:
         pass
 
     char *est_version
@@ -530,15 +534,9 @@ cdef class Condition:
         def __set__(self, int mask):
             self.set_mask(mask)
     
-    #property aux:
-    #    def __get__(self):
-    #        return est_cond_auxiliary(self.estcond)
-    #    def __set__(self, min):
-    #        est_cond_set_auxiliary(self.estcond, min)
-    
     property eclipse:
         def __set__(self, double limit):
-            est_cond_set_eclipse(self.estcond, limit)
+            self.set_eclipse(limit)
 
     property attrs:
         def __get__(self):
@@ -549,11 +547,20 @@ cdef class Condition:
             # We don't need to close the list since its life is already
             # synchronous with the life of the condition
 
-    def get_score(self, index):
-        return est_cond_score(self.estcond, index)
+    #property aux:
+    #    def __get__(self):
+    #        return est_cond_auxiliary(self.estcond)
+    #    def __set__(self, min):
+    #        est_cond_set_auxiliary(self.estcond, min)
 
     #def aux_used(self, word):
     #    return bool(est_cond_auxiliary_word(self.estcond, word))
+
+    def get_score(self, index):
+        return est_cond_score(self.estcond, index)
+
+    def set_eclipse(self, double limit, criteria=ESTECLSIMURL):
+        est_cond_set_eclipse(self.estcond, limit+criteria)
     
     def copy(self):
         cdef ESTCOND *cond_p
@@ -562,15 +569,6 @@ cdef class Condition:
         cond = Condition()
         cond.estcond = cond_p
         return cond
-    
-    def shadows(self, int parent):
-        cdef int* _res
-        cdef int np, i
-        res = []
-        _res = est_cond_shadows(self.estcond, parent, &np)
-        for i from 0 <= i < (np/2):
-            res.append((_res[i], _res[i+1]))
-        return res
 
     def set_phrase(self, phrase):
         encoded = encode(phrase)
@@ -603,7 +601,7 @@ cdef class Database:
     cdef ESTDB *estdb
     cdef int _ecode
 
-    def __new__(self, name, omode=ESTDBWRITER | ESTDBCREAT):
+    def __new__(self, name, omode=ESTDBWRITER | ESTDBCREAT | ESTDBSCINT):
         self.estdb = est_db_open(name, omode, &self._ecode)
 
     def close(self):
@@ -788,6 +786,8 @@ cdef class Search:
     cdef Condition condition
     cdef int results_len
     cdef int *results
+    cdef int _scores
+    cdef object sc
 
     def __new__(self, database, phrase, simple):
         self.database = database
@@ -796,6 +796,8 @@ cdef class Search:
             self.condition.set_phrase(phrase)
         if simple:
             self.condition.set_options(ESTCONDSIMPLE)
+        self._scores = 0
+        self.sc = []
 
     def __dealloc__(self):
         if self.results != NULL:
@@ -837,6 +839,34 @@ cdef class Search:
         self.condition.set_mask(mask)
         return self
     
+    def eclipse(self, double limit, criteria=ESTECLSIMURL):
+        """ Set the lower limit of similarity eclipse """
+        self.condition.set_eclipse(limit, criteria)
+        return self
+
+    def scores(self):
+        """ Enabling returning the scores togheter with the documents """
+        self._scores = 1
+        return self
+
+    def shadows(self, Document doc):
+        cdef int* _res
+        cdef int np, i
+        res = []
+        _res = est_cond_shadows(self.condition.estcond, doc.id, &np)
+        i = 0
+        while i < np:
+            res.append((self.database.get_doc(_res[i]), _res[i+1]))
+            i = i + 2
+        return res
+
+    def option(self, int opt):
+        self.condition.set_options(opt)
+        return self
+
+    def get_score(self, int index):
+        return self.sc[index]
+
     def __getitem__(self, s):
         """
         Return an item or slice of the results as one or a sequence of
@@ -844,7 +874,7 @@ cdef class Search:
         """
         self.prepare()
         if isinstance(s, slice):
-            return SearchIterator(self, *s.indices(self.results_len))
+            return SearchIterator(self, self._scores, *s.indices(self.results_len))
         else:
             return self.doc_at(s)
 
@@ -860,7 +890,7 @@ cdef class Search:
         Support the iterator protocol.
         """
         self.prepare()
-        return SearchIterator(self, 0, self.results_len, 1)
+        return SearchIterator(self, self._scores, 0, self.results_len, 1)
 
     def prepare(self):
         """
@@ -868,12 +898,16 @@ cdef class Search:
         necessary and initialises any attributes needed to support further
         calls.
         """
+        cdef int i
         if self.results == NULL:
             self.results = est_db_search(
                 self.database.estdb,
                 self.condition.estcond,
                 &self.results_len,
                 NULL)
+            if self._scores:
+                for i from 0 <= i < self.results_len:
+                    self.sc.append(self.condition.get_score(i))
 
     def doc_at(self, pos):
         """
@@ -882,16 +916,22 @@ cdef class Search:
         if pos < 0 or pos >= self.results_len:
             raise IndexError()
         docid = self.results[pos]
-        return self.database.get_doc(docid)
+        doc = self.database.get_doc(docid)
+        if self.scores == 1:
+            score = self.get_score(pos)
+            return doc, score
+        else:
+            return doc
 
 class SearchIterator(object):
 
-    def __init__(self, Search search, start, stop, stride):
+    def __init__(self, Search search, scores, start, stop, stride):
         self.search = search
         self.start = start
         self.stop = stop
         self.stride = stride
         self.current = start
+        self.scores = scores
 
     def __iter__(self):
         return self
@@ -907,6 +947,13 @@ class SearchIterator(object):
         if self.current == self.stop:
             raise StopIteration()
         doc = self.search.doc_at(self.current)
+        if self.scores:
+            score = self.search.get_score(self.current)
         self.current = self.current + self.stride
-        return doc
+        if self.scores == 1:
+            return doc, score
+        else:
+            return doc
+
+
 

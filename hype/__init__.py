@@ -67,3 +67,8 @@ from hype._hype import ESTRPSHODDY      # omit consistency check
 
 from hype._hype import ESTMGCLEAN       # clean up dispensable regions
 
+from hype._hype import ESTECLSIMURL     # eclipse considering similarity and URL
+from hype._hype import ESTECLSERV       # eclipse on server basis
+from hype._hype import ESTECLDIR        # eclipse on directory basis
+from hype._hype import ESTECLFILE       # eclipse on file basis
+

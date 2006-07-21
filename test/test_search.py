@@ -14,6 +14,7 @@ uris = lambda result: [doc['@uri'] for doc in result]
 
 def setup_module(mod):
     mod.db = he.Database(str(py.test.ensuretemp('test_search.db')))
+    mod.db.add_attr_index('@title', he.ESTIDXATTRSTR)
     for path in TESTDATA.listdir():
         if path.basename.startswith('rfc'):
             doc = he.Document()
@@ -87,6 +88,30 @@ def test_offset():
     result = db.search(u'access control').order(u'@title STRA').offset(3)
     assert len(result) == 3
     assert uris(result) == [u'rfc1508.txt', u'rfc1510.txt', u'rfc1538.txt']
+
+def test_eclipse_shadow():
+    result = db.search(u'access control').order(u'@title STRA')
+    result1 = db.search(u'access control').order(u'@title STRA').eclipse(0.1)
+    assert len(result)
+    assert len(result1)
+    assert len(result1) != len(result)
+    shadowed = False
+    for doc in result1:
+        if result1.shadows(doc):
+            shadowed = True
+    assert shadowed
+
+def uri_with_scores(result):
+    uris = []
+    for doc, score in result:
+        uris.append((doc.uri, score))
+    return uris
+
+def test_scores():
+    py.test.skip("For some weird reason scores don't really work")
+    result = db.search(u'access control').order(u'@title STRA').scores().option(he.ESTCONDSCFB)
+    assert len(result)
+    assert uri_with_scores(result) == [('foo', 'bar')]
 
 def teardown_module(mod):
     mod.db.close()
