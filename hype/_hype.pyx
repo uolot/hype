@@ -914,7 +914,7 @@ cdef class Search:
             raise IndexError()
         docid = self.results[pos]
         doc = self.database.get_doc(docid)
-        if self.scores == 1:
+        if self._scores == 1:
             score = self.get_score(pos)
             return doc, score
         else:
