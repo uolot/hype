@@ -12,9 +12,6 @@ cdef extern from 'Python.h':
 cdef extern from 'stdlib.h':
     void free(void *)
 
-cdef extern from 'string.h':
-    int strlen(char *s)
-
 ESTDBREADER = 1 << 0      # open as a reader
 ESTDBWRITER = 1 << 1      # open as a writer
 ESTDBCREAT = 1 << 2       # a writer creating
@@ -601,7 +598,7 @@ cdef class Database:
     cdef ESTDB *estdb
     cdef int _ecode
 
-    def __new__(self, name, omode=ESTDBWRITER | ESTDBCREAT | ESTDBSCINT):
+    def __new__(self, name, omode=ESTDBWRITER | ESTDBCREAT | ESTDBSCASIS):
         self.estdb = est_db_open(name, omode, &self._ecode)
 
     def close(self):
@@ -725,7 +722,7 @@ cdef class Database:
         self._check()
         if est_db_add_attr_index(self.estdb, name, type):
             return True
-        raise DBAddAttributeIndexError("Error while adding attribute index %s" % (encname,))
+        raise DBAddAttributeIndexError("Error while adding attribute index %s" % (name,))
 
     def merge(self, path, int options = ESTMGCLEAN):
         self._check()

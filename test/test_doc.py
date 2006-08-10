@@ -125,7 +125,6 @@ def test_etch():
         doc['@uri'] = u'1'
         doc.add_text(TEXT)
         d = db.etch(doc, 1)
-        print d
         assert d == {u'be': 8246}
     finally:
         db.close()

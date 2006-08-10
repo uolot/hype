@@ -108,7 +108,6 @@ def uri_with_scores(result):
     return uris
 
 def test_scores():
-    py.test.skip("For some weird reason scores don't really work")
     result = db.search(u'access control').order(u'@title STRA').scores().option(he.ESTCONDSCFB)
     assert len(result)
     assert uri_with_scores(result) == [('foo', 'bar')]
