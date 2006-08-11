@@ -76,8 +76,7 @@ def init():
         for i in xrange(0, DOCS):
             if i%(DOCS/10) == 0:
                 print 'Adding %d documents ...' % (DOCS/10)
-            doc = he.Document()
-            doc['@uri'] = str(i)
+            doc = he.Document(unicode(i))
             text = ' '.join(random.sample(WORDS, random.randint(*WORDS_PER_DOC)))
             doc.add_text(text)
             db.put_doc(doc)

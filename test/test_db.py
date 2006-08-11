@@ -6,8 +6,7 @@ NAME = str(py.test.ensuretemp('test_db.db'))
 def setup_module(mod):
     mod.db = he.Database(NAME)
     for title, content in [(u'1', u'one one'), (u'2', u'two two'), (u'3', u'three three')]:
-        doc = he.Document()
-        doc['@uri'] = title
+        doc = he.Document(title)
         doc['@title'] = title
         doc.add_text(content)
         db.put_doc(doc)
@@ -17,10 +16,9 @@ def test_commit_remove():
     db = he.Database(path)
     try:
         assert len(db) == 0
-        doc = he.Document()
+        doc = he.Document(u'test')
         py.test.raises(he.DBRemoveError, db.remove, doc)
         py.test.raises(he.DBEditError, db.commit, doc)
-        doc['@uri'] = u'test'
         db.put_doc(doc)
         assert len(db) == 1
         assert db.commit(doc)
@@ -38,8 +36,7 @@ def test_commit_remove():
         d_copy2 = db.get_doc_by_uri(u'commit test')
         assert not d_copy2 # commit test is @title not @uri
 
-        doc2 = he.Document()
-        doc2['@uri'] = u'another test'
+        doc2 = he.Document(u'another test')
         db.put_doc(doc2)
         id2 = doc2.id
 
@@ -82,8 +79,7 @@ def test_db_api():
     try:
         db1.add_attr_index('@title', he.ESTIDXATTRSTR)
         for title, content in [(u'4', u'four four'), (u'5', u'five five'), (u'6', u'six six')]:
-            doc = he.Document()
-            doc['@uri'] = title
+            doc = he.Document(title)
             doc['@title'] = title
             doc.add_text(content)
             db1.put_doc(doc)
@@ -100,8 +96,7 @@ def test_merge():
     NAME = str(py.test.ensuretemp('testdb.db1'))
     db1 = he.Database(NAME)
     for title, content in [(u'4', u'four four'), (u'5', u'five five'), (u'6', u'six six')]:
-        doc = he.Document()
-        doc['@uri'] = title
+        doc = he.Document(title)
         doc['@title'] = title
         doc.add_text(content)
         db1.put_doc(doc)

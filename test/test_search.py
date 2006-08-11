@@ -17,9 +17,8 @@ def setup_module(mod):
     mod.db.add_attr_index('@title', he.ESTIDXATTRSTR)
     for path in TESTDATA.listdir():
         if path.basename.startswith('rfc'):
-            doc = he.Document()
+            doc = he.Document(unicode(path.basename))
             stat = path.lstat()
-            doc['@uri'] = unicode(path.basename)
             doc['@cdate'] = unicode(formattime(stat.ctime))
             doc['@mdate'] = unicode(formattime(stat.mtime))
             doc['@size'] = unicode(stat.size)

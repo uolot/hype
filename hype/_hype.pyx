@@ -353,21 +353,26 @@ cdef class Document:
             est_doc_delete(self.estdoc)
             self.estdoc = NULL
 
-    cdef init_estdoc(self):
-        """
-        Internal function to ensure estdoc is allocated.
-        """
-        if self.estdoc == NULL:
+    def __new__(self, uri):
+        if uri != None:
             self.estdoc = est_doc_new()
+            self['@uri'] = uri
+
+    cdef set_new_estdoc(self, ESTDOC *edoc):
+        self.estdoc = edoc
+    
+    cdef check(self):
+        if self.estdoc == NULL:
+            raise DocumentError("Document not correctly initialized, None passed as initial argument")
 
     property id:
         " Document ID "
         def __get__(self):
-            self.init_estdoc()
+            self.check()
             return est_doc_id(self.estdoc)
         
         def __set__(self, int id):
-            self.init_estdoc()
+            self.check()
             est_doc_set_id(self.estdoc, id)
 
     property uri:
@@ -377,14 +382,15 @@ cdef class Document:
     property score:
         def __set__(self, score):
             """ Sets substitute score """
+            self.check()
             est_doc_set_score(self.estdoc, score)
 
     property attributes:
         " A list of attribute names "
         def __get__(self):
+            self.check()
             cdef CBLIST *attrs_c
             cdef int attrs_length, i, sp
-            self.init_estdoc()
             attrs_c = est_doc_attr_names(self.estdoc)
             cblistsort(attrs_c)
             attrs = cblist_to_list(attrs_c)
@@ -394,8 +400,8 @@ cdef class Document:
     property texts:
         " A list of texts in the document "
         def __get__(self):
+            self.check()
             cdef CBLIST *_texts
-            self.init_estdoc()
             _texts = est_doc_texts(self.estdoc)
             texts = cblist_to_list(_texts)
             # We don't need to close the list since its life is already
@@ -410,6 +416,7 @@ cdef class Document:
     property hidden_text:
         " A concatenated string of hidden text "
         def __get__(self):
+            self.check()
             # See above, we don't need to worry about lifetime here too
             decoded = decode(est_doc_hidden_texts(self.estdoc))
             return decoded
@@ -421,7 +428,6 @@ cdef class Document:
         raise KeyError('Document has no attribute %r'%name)
 
     def __setitem__(self, name, value):
-        self.init_estdoc()
         if name == "@uri" and self.get('@uri', None):
             raise DocModifyImmutableError("Cannot modify @uri attribute")
         if not isinstance(value, basestring):
@@ -430,21 +436,21 @@ cdef class Document:
         est_doc_add_attr(self.estdoc, name, encoded)
 
     def is_empty(self):
-        self.init_estdoc()
+        self.check()
         return bool(est_doc_is_empty(self.estdoc))
 
     def copy(self):
-        self.init_estdoc()
+        self.check()
         cdef ESTDOC *doc_p
         cdef Document doc
         doc_p = est_doc_dup(self.estdoc)
-        doc = Document()
-        doc.estdoc = doc_p
+        doc = Document(None)
+        doc.set_new_estdoc(doc_p)
         return doc
 
     def get(self, name, default=None):
+        self.check()
         cdef char *value
-        self.init_estdoc()
         value = est_doc_attr(self.estdoc, name)
         if value == NULL:
             return default
@@ -452,24 +458,24 @@ cdef class Document:
         return _filters.get(name, (_pass, _pass))[OUT](decoded)
 
     def add_text(self, text):
-        self.init_estdoc()
+        self.check()
         encoded = encode(text)
         est_doc_add_text(self.estdoc, encoded)
 
     def add_hidden_text(self, text):
-        self.init_estdoc()
+        self.check()
         encoded = encode(text)
         est_doc_add_hidden_text(self.estdoc, encoded)
 
     def set_keywords(self, kwdict):
-        self.init_estdoc()
+        self.check()
         cdef CBMAP *cbmap
         cbmap = cbmapopen()
         dict_to_cbmap(kwdict, cbmap)
         est_doc_set_keywords(self.estdoc, cbmap)
 
     def get_keywords(self):
-        self.init_estdoc()
+        self.check()
         cdef CBMAP *cbmap
         cbmap = est_doc_keywords(self.estdoc)
         if cbmap != NULL:
@@ -482,8 +488,8 @@ def doc_from_string(char *data):
     cdef Document doc
     encoded = encode(data)
     doc_p = est_doc_new_from_draft(encoded)
-    doc = Document()
-    doc.estdoc = doc_p
+    doc = Document(None)
+    doc.set_new_estdoc(doc_p)
     return doc
 
 cdef class Condition:
@@ -659,8 +665,8 @@ cdef class Database:
         self._check()
         doc_p = est_db_get_doc(self.estdb, id, options)
         if doc_p != NULL:
-            doc = Document()
-            doc.estdoc = doc_p
+            doc = Document(None)
+            doc.set_new_estdoc(doc_p)
             return doc
         return None
 

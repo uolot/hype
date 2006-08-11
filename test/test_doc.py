@@ -4,17 +4,15 @@ import hype as he
 def test_docid():
     db = he.Database(str(py.test.ensuretemp('test.db')))
     try:
-        doc = he.Document()
+        doc = he.Document(u'uri')
         assert doc.is_empty()
-        doc['@uri'] = u'uri'
         assert doc.id == -1
         db.put_doc(doc)
         assert doc.id != -1
         doc_copy = doc.copy()
         assert doc_copy.id == doc.id
         assert doc_copy != doc
-        doc = he.Document()
-        doc['@uri'] = u'uri2'
+        doc = he.Document(u'uri2')
         doc.id = 4
         db.put_doc(doc)
         assert db.get_doc(4)['@uri'] == u'uri2'
@@ -22,8 +20,7 @@ def test_docid():
         db.close()
 
 def test_attr():
-    doc = he.Document()
-    doc['@uri'] = u'uri'
+    doc = he.Document(u'uri')
     doc['@title'] = u'title'
     assert doc['@uri'] == u'uri'
     assert doc['@title'] == u'title'
@@ -40,8 +37,7 @@ def test_python_in_python_out():
         from datetime import datetime
         dtt = he.dt_to_str
         t = datetime.now()
-        doc = he.Document()
-        doc['@uri'] = u'title 1'
+        doc = he.Document(u'title 1')
         doc['@mdate'] = t
         doc['@cdate'] = t
         doc['@adate'] = t
@@ -62,8 +58,7 @@ def test_python_in_python_out():
 def test_commit_remove():
     db = he.Database(str(py.test.ensuretemp('test.db1')))
     try:
-        doc = he.Document()
-        doc['@uri'] = u'test test'
+        doc = he.Document(u'test test')
         db.put_doc(doc)
         assert doc.id
         id = doc.id
@@ -81,8 +76,7 @@ def test_text():
     db = he.Database(str(py.test.ensuretemp('test.db1234')))
     try:
         TEXT = u'yooooooo'
-        doc = he.Document()
-        doc['@uri'] = u'fooo'
+        doc = he.Document(u'fooo')
         doc.add_text(TEXT)
         doc.add_text(TEXT)
         doc.add_hidden_text(TEXT)
@@ -98,8 +92,7 @@ def test_keywords():
     db = he.Database(str(py.test.ensuretemp('test.db123456')))
     try:
         TEXT = u'yoyo'
-        doc = he.Document()
-        doc['@uri'] = u'1'
+        doc = he.Document(u'1')
         doc.set_keywords({u'key1': 1, u'key2': 1})
         doc.add_text(TEXT)
         db.put_doc(doc)
@@ -121,8 +114,7 @@ def test_etch():
     db = he.Database(str(py.test.ensuretemp('test.db_unique')))
     try:
         TEXT = u"I'm your baby and I want to be etched. What do you think? be be be be"
-        doc = he.Document()
-        doc['@uri'] = u'1'
+        doc = he.Document(u'1')
         doc.add_text(TEXT)
         d = db.etch(doc, 1)
         assert d == {u'be': 8246}

@@ -113,7 +113,9 @@ Document
 
 To be indexed a document requires the existence of the @uri attribute.
 
-class Document
+class Document(uri)
+    - uri represents the @uri special attribute of the document.
+
     Document.db
         - The database in which the document is stored
 
@@ -190,12 +192,10 @@ Examples
 >>> import hype as he
 >>> PATH = 'examples.db'
 >>> db = he.Database(PATH)
->>> doc = he.Document()
->>> doc['@uri'] = u'first_one'  
+>>> doc = he.Document(u'first_one')
 >>> doc.add_text(u'hi boy')
 >>> db.put_doc(doc)
->>> doc = he.Document()
->>> doc['@uri'] = u'second_one'
+>>> doc = he.Document(u'second_one')
 >>> doc.add_text(u'hi dog')
 >>> db.put_doc(doc)
 >>> len(db)
@@ -228,8 +228,7 @@ first_one
 ... 
 second_one
 first_one
->>> doc = he.Document()
->>> doc['@uri'] = u'first_one' 
+>>> doc = he.Document(u'first_one')
 >>> doc.add_text(u'how come you are reading here?')
 >>> db.put_doc(doc)
 >>> list(db.search(u'how you'))
