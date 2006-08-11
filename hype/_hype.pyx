@@ -1,5 +1,3 @@
-import time
-import rfc822
 from dateutil.parser import parse
 
 __version__ = "Hype version 0.01"
@@ -397,7 +395,6 @@ cdef class Document:
         " A list of texts in the document "
         def __get__(self):
             cdef CBLIST *_texts
-            cdef int texts_length, i, sp
             self.init_estdoc()
             _texts = est_doc_texts(self.estdoc)
             texts = cblist_to_list(_texts)
@@ -871,7 +868,7 @@ cdef class Search:
         """
         self.prepare()
         if isinstance(s, slice):
-            return SearchIterator(self, self._scores, *s.indices(self.results_len))
+            return SearchIterator(self, *s.indices(self.results_len))
         else:
             return self.doc_at(s)
 
@@ -887,7 +884,7 @@ cdef class Search:
         Support the iterator protocol.
         """
         self.prepare()
-        return SearchIterator(self, self._scores, 0, self.results_len, 1)
+        return SearchIterator(self, 0, self.results_len, 1)
 
     def prepare(self):
         """
@@ -922,13 +919,12 @@ cdef class Search:
 
 class SearchIterator(object):
 
-    def __init__(self, Search search, scores, start, stop, stride):
+    def __init__(self, Search search, start, stop, stride):
         self.search = search
         self.start = start
         self.stop = stop
         self.stride = stride
         self.current = start
-        self.scores = scores
 
     def __iter__(self):
         return self
@@ -944,13 +940,8 @@ class SearchIterator(object):
         if self.current == self.stop:
             raise StopIteration()
         doc = self.search.doc_at(self.current)
-        if self.scores:
-            score = self.search.get_score(self.current)
         self.current = self.current + self.stride
-        if self.scores == 1:
-            return doc, score
-        else:
-            return doc
+        return doc
 
 
 

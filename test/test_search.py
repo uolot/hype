@@ -110,7 +110,7 @@ def uri_with_scores(result):
 def test_scores():
     result = db.search(u'access control').order(u'@title STRA').scores().option(he.ESTCONDSCFB)
     assert len(result)
-    assert uri_with_scores(result) == [('foo', 'bar')]
+    assert uri_with_scores(result) == [(u'rfc1503.txt', 875), (u'rfc1505.txt', 207), (u'rfc1507.txt', 426), (u'rfc1508.txt', 260), (u'rfc1510.txt', 141), (u'rfc1538.txt', 110)]
 
 def teardown_module(mod):
     mod.db.close()
