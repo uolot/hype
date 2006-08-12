@@ -258,6 +258,7 @@ class DBRemoveKeywordsError(DBError):
 
 cdef class Database # Forward
 cdef class Search # Forward
+cdef class Document # Forward
 
 def dt_to_str(dt, iso=True):
     if iso:
@@ -288,7 +289,7 @@ _filters = {'@mdate': (dt_to_str, dt_from_str),
             '@weight': (unicode, float),
             }
 
-cdef cbmap_to_dict(CBMAP *cm):
+cdef object cbmap_to_dict(CBMAP *cm):
     cdef CBLIST *klist, *vlist
     cdef char *key, *val
     cdef int l, i, sp1, sp2
@@ -318,7 +319,7 @@ cdef CBMAP *dict_to_cbmap(d, CBMAP *cbmap):
         cbmapput(cbmap, key, -1, val, -1, 1)
     return cbmap
 
-cdef cblist_to_list(CBLIST *cl):
+cdef object cblist_to_list(CBLIST *cl):
     cdef int sp, cl_length, i
     cl_length = cblistnum(cl)
     l = []
@@ -345,22 +346,25 @@ def repair(char *path, int options):
         return True
     raise DBRepairError("Error while repairing the database: %d" % ecp)
 
+cdef Document create_document(ESTDOC *edoc):
+    cdef Document doc
+    doc = Document(None, _nodoc=True)
+    doc.estdoc = edoc
+    return doc
+
 cdef class Document:
     cdef ESTDOC *estdoc
-    
+
     def __dealloc__(self):
         if self.estdoc != NULL:
             est_doc_delete(self.estdoc)
             self.estdoc = NULL
 
-    def __new__(self, uri):
-        if uri != None:
+    def __init__(self, uri, _nodoc=False):
+        if _nodoc is False:
             self.estdoc = est_doc_new()
             self['@uri'] = uri
 
-    cdef set_new_estdoc(self, ESTDOC *edoc):
-        self.estdoc = edoc
-    
     cdef check(self):
         if self.estdoc == NULL:
             raise DocumentError("Document not correctly initialized, None passed as initial argument")
@@ -444,8 +448,7 @@ cdef class Document:
         cdef ESTDOC *doc_p
         cdef Document doc
         doc_p = est_doc_dup(self.estdoc)
-        doc = Document(None)
-        doc.set_new_estdoc(doc_p)
+        doc = create_document(doc_p)
         return doc
 
     def get(self, name, default=None):
@@ -488,8 +491,7 @@ def doc_from_string(char *data):
     cdef Document doc
     encoded = encode(data)
     doc_p = est_doc_new_from_draft(encoded)
-    doc = Document(None)
-    doc.set_new_estdoc(doc_p)
+    doc = create_document(doc_p)
     return doc
 
 cdef class Condition:
@@ -665,8 +667,7 @@ cdef class Database:
         self._check()
         doc_p = est_db_get_doc(self.estdb, id, options)
         if doc_p != NULL:
-            doc = Document(None)
-            doc.set_new_estdoc(doc_p)
+            doc = create_document(doc_p)
             return doc
         return None
 
