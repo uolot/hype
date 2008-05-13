@@ -1,0 +1,6 @@
+build
+dist
+*.pyc
+hype/_hype.c
+hype/_hype.so
+
