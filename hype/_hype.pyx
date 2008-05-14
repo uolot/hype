@@ -406,8 +406,9 @@ cdef class Document:
         def __get__(self):
             self.check()
             cdef CBLIST *_texts
-            _texts = est_doc_texts(self.estdoc)
-            texts = cblist_to_list(_texts)
+            texts = []
+            for text in cblist_to_list(est_doc_texts(self.estdoc)):
+                texts.append(text.decode("utf-8"))
             # We don't need to close the list since its life is already
             # synchronous with the life of the document
             return texts

@@ -22,7 +22,7 @@ ext = Extension('hype._hype',
 
 setup(
     name='hype',
-    version='0.1.1',
+    version='0.1.2',
     packages=find_packages(),
     ext_modules=[ext,],
     package_data={}
