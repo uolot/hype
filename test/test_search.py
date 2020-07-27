@@ -94,17 +94,11 @@ def test_eclipse_shadow():
     assert len(result)
     assert len(result1)
     assert len(result1) != len(result)
-    shadowed = False
-    for doc in result1:
-        if result1.shadows(doc):
-            shadowed = True
+    shadowed = any(result1.shadows(doc) for doc in result1)
     assert shadowed
 
 def uri_with_scores(result):
-    uris = []
-    for doc, score in result:
-        uris.append((doc.uri, score))
-    return uris
+    return [(doc.uri, score) for doc, score in result]
 
 def test_scores():
     result = db.search(u'access control').order(u'@title STRA').scores().option(he.ESTCONDSCFB)
